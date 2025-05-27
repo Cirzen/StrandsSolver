@@ -224,35 +224,36 @@ public partial class MainWindow : Window
                 tb.PreviewKeyDown += (sender, e) =>
                 {
                     var textBox = sender as TextBox;
-                    if (textBox != null)
+                    if (textBox == null)
                     {
-                        if (e.Key == Key.Back)
-                        {
-                            // Handle Backspace
-                            if (textBox.CaretIndex == 0)
-                            {
-                                int prevCol = (currentCol - 1 + 6) % 6;
-                                int prevRow = currentRow - (currentCol == 0 ? 1 : 0);
+                        return;
+                    }
 
-                                if (prevRow >= 0)
-                                {
-                                    _boardTextBoxes[prevRow, prevCol].Focus();
-                                }
-                                e.Handled = true;
-                            }
-                            else
-                            {
-                                textBox.Clear();
-                                e.Handled = true;
-                            }
-                        }
-                        else if (e.Key == Key.Delete)
+                    switch (e.Key)
+                    {
+                        // Handle Backspace
+                        case Key.Back when textBox.CaretIndex == 0:
                         {
+                            int prevCol = (currentCol - 1 + 6) % 6;
+                            int prevRow = currentRow - (currentCol == 0 ? 1 : 0);
+
+                            if (prevRow >= 0)
+                            {
+                                _boardTextBoxes[prevRow, prevCol].Focus();
+                            }
+                            e.Handled = true;
+                            break;
+                        }
+                        case Key.Back:
+                            textBox.Clear();
+                            e.Handled = true;
+                            break;
+                        case Key.Delete:
                             // Handle Delete
                             textBox.Clear();
                             e.Handled = true;
-                        }
-                        else if (e.Key == Key.Right)
+                            break;
+                        case Key.Right:
                         {
                             // Handle Right Arrow
                             int nextCol = (currentCol + 1) % 6;
@@ -263,28 +264,26 @@ public partial class MainWindow : Window
                                 _boardTextBoxes[nextRow, nextCol].Focus();
                             }
                             e.Handled = true;
+                            break;
                         }
-                        else if (e.Key == Key.Left)
+                        // Handle Left Arrow
+                        case Key.Left when !string.IsNullOrEmpty(textBox.Text) && textBox.CaretIndex == textBox.Text.Length:
+                            textBox.CaretIndex = 0;
+                            e.Handled = true;
+                            break;
+                        case Key.Left:
                         {
-                            // Handle Left Arrow
-                            if (!string.IsNullOrEmpty(textBox.Text) && textBox.CaretIndex == textBox.Text.Length)
-                            {
-                                textBox.CaretIndex = 0;
-                                e.Handled = true;
-                            }
-                            else
-                            {
-                                int prevCol = (currentCol - 1 + 6) % 6;
-                                int prevRow = currentRow - (currentCol == 0 ? 1 : 0);
+                            int prevCol = (currentCol - 1 + 6) % 6;
+                            int prevRow = currentRow - (currentCol == 0 ? 1 : 0);
 
-                                if (prevRow >= 0)
-                                {
-                                    _boardTextBoxes[prevRow, prevCol].Focus();
-                                }
-                                e.Handled = true;
+                            if (prevRow >= 0)
+                            {
+                                _boardTextBoxes[prevRow, prevCol].Focus();
                             }
+                            e.Handled = true;
+                            break;
                         }
-                        else if (e.Key == Key.Up)
+                        case Key.Up:
                         {
                             // Handle Up Arrow
                             int prevRow = currentRow - 1;
@@ -294,8 +293,9 @@ public partial class MainWindow : Window
                                 _boardTextBoxes[prevRow, currentCol].Focus();
                             }
                             e.Handled = true;
+                            break;
                         }
-                        else if (e.Key == Key.Down)
+                        case Key.Down:
                         {
                             // Handle Down Arrow
                             int nextRow = currentRow + 1;
@@ -305,7 +305,11 @@ public partial class MainWindow : Window
                                 _boardTextBoxes[nextRow, currentCol].Focus();
                             }
                             e.Handled = true;
+                            break;
                         }
+                        default:
+                            // Ignore other keys
+                            break;    
                     }
                 };
 
@@ -327,11 +331,11 @@ public partial class MainWindow : Window
 
         var boardStringBuilder = new StringBuilder();
         bool boardIsValid = true;
-        for (int r = 0; r < 8; r++) // Assuming 8 rows
+        for (int row = 0; row < 8; row++)
         {
-            for (int c = 0; c < 6; c++) // Assuming 6 columns
+            for (int column = 0; column < 6; column++)
             {
-                var textBox = _boardTextBoxes[r, c];
+                var textBox = _boardTextBoxes[row, column];
                 if (textBox is null || string.IsNullOrWhiteSpace(textBox.Text) || !char.IsLetter(textBox.Text[0]))
                 {
                     UpdateStatusBar("Validation failed: All cells must be filled with a single letter (A-Z).");
