@@ -8,8 +8,8 @@ public class WordFinder
     private readonly int[,] _directions = new int[,]
     {
         { -1, -1 }, { -1, 0 }, { -1, 1 },
-        { 0, -1 }, { 0, 1 },
-        { 1, -1 }, { 1, 0 }, { 1, 1 }
+        { 0, -1  },            {  0, 1 },
+        { 1, -1  }, {  1, 0 }, {  1, 1 }
     };
 
     public WordFinder(Trie trie, int rows, int cols)
@@ -28,7 +28,7 @@ public class WordFinder
         {
             for (int c = 0; c < _cols; c++)
             {
-                DepthFirstSearchRecursive(board, visited, r, c, "", new List<(int, int)>(), foundPaths);
+                DepthFirstSearchRecursive(board, visited, r, c, "", new(), foundPaths);
             }
         }
 
@@ -57,7 +57,7 @@ public class WordFinder
             // Check for edge crossings within the word
             if (!HasEdgeCrossing(path))
             {
-                results.Add(new WordPath(currentWord, new List<(int, int)>(path)));
+                results.Add(new(currentWord, new List<(int, int)>(path)));
             }
         }
 

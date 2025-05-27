@@ -1,4 +1,3 @@
-using System;
 using System.IO;
 using System.Text.Json;
 using System.Windows;
@@ -60,10 +59,10 @@ public class ConfigurationService
 
     private AppSettings CreateDefaultSettings()
     {
-        return new AppSettings
+        return new()
         {
-            WordListPath = "sowpods.txt", // Consider making this empty to force initial user selection
-            ProgressUpdateIntervalMilliseconds = 500 // Default interval
+            WordListPath = "sowpods.txt",
+            ProgressUpdateIntervalMilliseconds = 500
         };
     }
 }

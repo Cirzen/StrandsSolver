@@ -1,15 +1,11 @@
 using System.IO;
-using System.Linq;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using System.Threading;
 
 namespace Solver;
 
 internal class SolverEngine
 {
-    public static readonly Trie trie = new();
-    private static CancellationTokenSource? ctSource;
+    private static readonly Trie Trie = new();
+    private static CancellationTokenSource? _ctSource;
     private readonly ILogger _logger;
 
     public SolverEngine(ILogger logger)
@@ -28,14 +24,14 @@ internal class SolverEngine
         _logger?.Log($"Attempting to load dictionary from: {filePath}");
         if (File.Exists(filePath))
         {
-            trie.Clear();
+            Trie.Clear();
             int wordCount = 0;
             foreach (string line in File.ReadLines(filePath))
             {
                 string word = line.Trim().ToLowerInvariant();
                 if (word.Length >= 4)
                 {
-                    trie.Insert(word);
+                    Trie.Insert(word);
                     wordCount++;
                 }
             }
@@ -50,7 +46,7 @@ internal class SolverEngine
 
     public async Task<BoardSolver.BoardSolution> ExecuteAsync(char[,] board, IEnumerable<string> knownWords, ProgressTracker progressTracker, IEnumerable<string> wordsToExclude)
     {
-        if (trie.IsEmpty)
+        if (Trie.IsEmpty)
         {
             _logger?.Log("Trie is empty, attempting to initialize before execution.");
             try
@@ -65,17 +61,17 @@ internal class SolverEngine
         }
 
         knownWords ??= Enumerable.Empty<string>();
-        ctSource = new CancellationTokenSource();
+        _ctSource = new();
 
-        foreach (var word in knownWords.Where(word => !trie.Search(word)))
+        foreach (var word in knownWords.Where(word => !Trie.Search(word)))
         {
-            trie.Insert(word);
+            Trie.Insert(word);
         }
 
-        var finder = new WordFinder(trie, 8, 6);
+        var finder = new WordFinder(Trie, 8, 6);
         var allWordPathsFromFinder = finder.DepthFirstSearch(board);
 
-        if (wordsToExclude != null && wordsToExclude.Any())
+        if (wordsToExclude is not null && wordsToExclude.Any())
         {
             var exclusionSet = new HashSet<string>(wordsToExclude.Select(w => w.ToLowerInvariant()));
             int originalCount = allWordPathsFromFinder.Count;
@@ -159,7 +155,7 @@ internal class SolverEngine
             usedPositions,
             usedEdges,
             currentSolutionWithUnambiguousKnowns,
-            ctSource.Token,
+            _ctSource.Token,
             progressTracker,
             ambiguousKnownWordStrings,
             allPathsForAmbiguousResolution
@@ -177,11 +173,11 @@ internal class SolverEngine
             }
             if (solution.Words != null)
             {
-                await progressTracker.ReportProgress(new List<WordPath>(solution.Words), (long)overallWps, progressTracker.CurrentHeatMap);
+                await progressTracker.ReportProgress(new(solution.Words), (long)overallWps, progressTracker.CurrentHeatMap);
             }
             else
             {
-                await progressTracker.ReportProgress(new List<WordPath>(), (long)overallWps, progressTracker.CurrentHeatMap);
+                await progressTracker.ReportProgress(new(), (long)overallWps, progressTracker.CurrentHeatMap);
                 _logger?.LogError("Solution reported as solved, but solution.Words was null.");
             }
         }
@@ -196,6 +192,6 @@ internal class SolverEngine
     public void Abort()
     {
         _logger?.Log("Solver aborted.");
-        ctSource?.Cancel();
+        _ctSource?.Cancel();
     }
 }

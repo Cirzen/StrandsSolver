@@ -1,17 +1,17 @@
-using Solver.Configuration;
-using System; // Required for StringComparison
-using System.Collections.Generic; // Required for List, HashSet, etc.
-using System.Linq; // Required for LINQ methods
-using System.Threading; // Required for CancellationToken
-using System.Threading.Tasks; // Required for Task
+// Required for StringComparison
+// Required for List, HashSet, etc.
+// Required for LINQ methods
+// Required for CancellationToken
+
+// Required for Task
 
 namespace Solver;
 
 internal class BoardSolver
 {
     private const int TotalCells = 48;
-    private readonly ILogger logger;
-    private readonly HashSet<ulong> failedStates = new();
+    private readonly ILogger _logger;
+    private readonly HashSet<ulong> _failedStates = new();
 
     /// <summary>
     /// Initializes a new instance of the <see cref="BoardSolver"/> class.
@@ -19,7 +19,7 @@ internal class BoardSolver
     /// <param name="logger">The logger used to record diagnostic and operational information during the solving process. Cannot be null.</param>
     public BoardSolver(ILogger logger)
     {
-        this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     /// <summary>
@@ -27,8 +27,8 @@ internal class BoardSolver
     /// </summary>
     internal class BoardSolution
     {
-        public bool IsSolved { get; set; } = false;
-        public List<WordPath> Words { get; set; } = new();
+        public bool IsSolved { get; init; } = false;
+        public List<WordPath> Words { get; init; } = new();
         public HashSet<(int, int)> UsedPositions { get; set; } = new();
         public HashSet<((int, int), (int, int))> UsedEdges { get; set; } = new();
     }
@@ -66,39 +66,41 @@ internal class BoardSolver
     {
         if (cancellationToken.IsCancellationRequested)
         {
-            return new BoardSolution { IsSolved = false };
+            return new() { IsSolved = false };
         }
 
         // Base Case 1: All known words are placed, and the board is full.
         if (!ambiguousKnownWordStrings.Any() && currentUsedPositions.Count == TotalCells)
         {
-            logger?.Log($"SolveAsync: Solution found! All known words placed and board is full. Word count: {currentSolutionSoFar.Count}");
-            return new BoardSolution
+            _logger?.Log($"SolveAsync: Solution found! All known words placed and board is full. Word count: {currentSolutionSoFar.Count}");
+            return new()
             {
                 IsSolved = true,
-                Words = new List<WordPath>(currentSolutionSoFar)
+                Words = new(currentSolutionSoFar)
             };
         }
 
         // Memoization: Check if we've been in this state before (positions + remaining ambiguous known words)
         var currentStateKey = GetStateKeyBitmask(currentUsedPositions);
-        if (failedStates.Contains(currentStateKey) && !ambiguousKnownWordStrings.Any())
+        if (_failedStates.Contains(currentStateKey) && !ambiguousKnownWordStrings.Any())
         {
-            return new BoardSolution { IsSolved = false };
+            return new() { IsSolved = false };
         }
 
         // --- Progress Reporting ---
-        // Note: IncrementWordsAttempted is now inside the loops
         int updateIntervalMilliseconds = App.ConfigService.Settings.ProgressUpdateIntervalMilliseconds;
         if ((DateTime.Now - progressTracker.LastProgressUpdate).TotalMilliseconds >= updateIntervalMilliseconds)
         {
             long wordsInInterval = progressTracker.GetAndResetWordsAttemptedSinceLastReport();
             double wpsInterval = wordsInInterval / (updateIntervalMilliseconds / 1000.0);
-            if (double.IsNaN(wpsInterval) || double.IsInfinity(wpsInterval)) wpsInterval = 0;
-            await progressTracker.ReportProgress(new List<WordPath>(currentSolutionSoFar), (long)wpsInterval, progressTracker.CurrentHeatMap);
+            if (double.IsNaN(wpsInterval) || double.IsInfinity(wpsInterval))
+            {
+                wpsInterval = 0;
+            }
+
+            await progressTracker.ReportProgress(new(currentSolutionSoFar), (long)wpsInterval, progressTracker.CurrentHeatMap);
             progressTracker.LastProgressUpdate = DateTime.Now;
         }
-        // --- End Progress Reporting ---
 
         // Step 1: Prioritize placing remaining ambiguous known words
         if (ambiguousKnownWordStrings.Any())
@@ -112,15 +114,18 @@ internal class BoardSolver
 
             if (!pathsToTryForThisWord.Any())
             {
-                logger?.LogError($"SolveAsync: CRITICAL - No paths found in allPathsForAmbiguousKnownWords for ambiguous known word '{wordToPlaceNowStr}'.");
-                return new BoardSolution { IsSolved = false };
+                _logger?.LogError($"SolveAsync: CRITICAL - No paths found in allPathsForAmbiguousKnownWords for ambiguous known word '{wordToPlaceNowStr}'.");
+                return new() { IsSolved = false };
             }
 
             foreach (var pathOption in pathsToTryForThisWord)
             {
                 progressTracker.IncrementWordsAttempted();
 
-                if (cancellationToken.IsCancellationRequested) return new BoardSolution { IsSolved = false };
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    return new() { IsSolved = false };
+                }
 
                 if (!IsValidWordPlacement(pathOption, currentUsedPositions, currentUsedEdges))
                 {
@@ -128,8 +133,15 @@ internal class BoardSolver
                 }
 
                 currentSolutionSoFar.Add(pathOption);
-                foreach (var pos in pathOption.Positions) currentUsedPositions.Add(pos);
-                foreach (var edge in pathOption.Edges) currentUsedEdges.Add(edge);
+                foreach (var pos in pathOption.Positions)
+                {
+                    currentUsedPositions.Add(pos);
+                }
+
+                foreach (var edge in pathOption.Edges)
+                {
+                    currentUsedEdges.Add(edge);
+                }
 
                 var result = await SolveAsync(
                     allCandidatePathsOnBoard,
@@ -146,17 +158,25 @@ internal class BoardSolver
                     return result;
                 }
 
-                foreach (var edge in pathOption.Edges) currentUsedEdges.Remove(edge);
-                foreach (var pos in pathOption.Positions) currentUsedPositions.Remove(pos);
+                foreach (var edge in pathOption.Edges)
+                {
+                    currentUsedEdges.Remove(edge);
+                }
+
+                foreach (var pos in pathOption.Positions)
+                {
+                    currentUsedPositions.Remove(pos);
+                }
+
                 currentSolutionSoFar.RemoveAt(currentSolutionSoFar.Count - 1);
             }
-            return new BoardSolution { IsSolved = false };
+            return new() { IsSolved = false };
         }
         else
         {
             if (currentUsedPositions.Count == TotalCells)
             {
-                return new BoardSolution { IsSolved = true, Words = new List<WordPath>(currentSolutionSoFar) };
+                return new() { IsSolved = true, Words = new(currentSolutionSoFar) };
             }
 
             var wordsInCurrentSolutionSet = currentSolutionSoFar.Select(wp => wp.Word.ToLowerInvariant()).ToHashSet();
@@ -170,19 +190,29 @@ internal class BoardSolver
 
             if (!rankedGeneralCandidates.Any() && currentUsedPositions.Count != TotalCells)
             {
-                failedStates.Add(currentStateKey);
-                return new BoardSolution { IsSolved = false };
+                _failedStates.Add(currentStateKey);
+                return new() { IsSolved = false };
             }
 
             foreach (var wordToTry in rankedGeneralCandidates)
             {
                 progressTracker.IncrementWordsAttempted();
 
-                if (cancellationToken.IsCancellationRequested) return new BoardSolution { IsSolved = false };
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    return new() { IsSolved = false };
+                }
 
                 currentSolutionSoFar.Add(wordToTry);
-                foreach (var pos in wordToTry.Positions) currentUsedPositions.Add(pos);
-                foreach (var edge in wordToTry.Edges) currentUsedEdges.Add(edge);
+                foreach (var pos in wordToTry.Positions)
+                {
+                    currentUsedPositions.Add(pos);
+                }
+
+                foreach (var edge in wordToTry.Edges)
+                {
+                    currentUsedEdges.Add(edge);
+                }
 
                 var result = await SolveAsync(
                     allCandidatePathsOnBoard,
@@ -191,7 +221,7 @@ internal class BoardSolver
                     currentSolutionSoFar,
                     cancellationToken,
                     progressTracker,
-                    new List<string>(),
+                    new(),
                     allPathsForAmbiguousKnownWords);
 
                 if (result.IsSolved)
@@ -199,14 +229,22 @@ internal class BoardSolver
                     return result;
                 }
 
-                foreach (var edge in wordToTry.Edges) currentUsedEdges.Remove(edge);
-                foreach (var pos in wordToTry.Positions) currentUsedPositions.Remove(pos);
+                foreach (var edge in wordToTry.Edges)
+                {
+                    currentUsedEdges.Remove(edge);
+                }
+
+                foreach (var pos in wordToTry.Positions)
+                {
+                    currentUsedPositions.Remove(pos);
+                }
+
                 currentSolutionSoFar.RemoveAt(currentSolutionSoFar.Count - 1);
             }
         }
 
-        failedStates.Add(currentStateKey);
-        return new BoardSolution { IsSolved = false };
+        _failedStates.Add(currentStateKey);
+        return new() { IsSolved = false };
     }
 
     /// <summary>
@@ -255,12 +293,12 @@ internal class BoardSolver
 
             if (candidateRegionWords.Count == 0)
             {
-                return new List<WordPath>();
+                return new();
             }
 
             if (!smallestRegion.All(p => candidateRegionWords.SelectMany(wp => wp.Positions).Distinct().Contains(p)))
             {
-                return new List<WordPath>();
+                return new();
             }
 
             var positionFrequencyInRegionCandidates = candidateRegionWords
@@ -268,7 +306,7 @@ internal class BoardSolver
                 .GroupBy(p => p)
                 .ToDictionary(g => g.Key, g => g.Count());
 
-            progressTracker.CurrentHeatMap = new Dictionary<(int, int), int>(positionFrequencyInRegionCandidates);
+            progressTracker.CurrentHeatMap = new(positionFrequencyInRegionCandidates);
 
             var scoredAndRankedWords = candidateRegionWords
                 .Select(w => new
@@ -283,14 +321,12 @@ internal class BoardSolver
 
             return scoredAndRankedWords;
         }
-        else
+        // No unused regions found, but board not full
+        if (currentUsedPositions.Count != TotalCells)
         {
-            if (currentUsedPositions.Count != TotalCells)
-            {
-                logger?.Log("No unused regions found, but board not full. This is unexpected or a dead-end path.");
-            }
-            return new List<WordPath>();
+            _logger?.Log("No unused regions found, but board not full. This is unexpected or a dead-end path.");
         }
+        return new();
     }
 
     /// <summary>
@@ -307,15 +343,14 @@ internal class BoardSolver
         {
             return false;
         }
-        if (wordToPlace.Edges.Any(newEdge => existingUsedEdges.Any(existingEdge => EdgeUtils.EdgesCross(newEdge, existingEdge) || EdgeUtils.EdgesOverlap(newEdge, existingEdge))))
+        if (wordToPlace.Edges.Any(newEdge => existingUsedEdges.Any(existingEdge => EdgeUtils.EdgesCross(newEdge,
+                    existingEdge) ||
+                EdgeUtils.EdgesOverlap(newEdge,
+                    existingEdge))))
         {
             return false;
         }
-        if (EdgeUtils.PathSelfIntersects(wordToPlace))
-        {
-            return false;
-        }
-        return true;
+        return !EdgeUtils.PathSelfIntersects(wordToPlace);
     }
 
     /// <summary>
@@ -332,42 +367,49 @@ internal class BoardSolver
     /// <returns>A list of regions, where each region is represented as a list of tuples. Each tuple contains the row and column
     /// indices of an unused position within that region. If no unused regions are found, the method returns an empty
     /// list.</returns>
-    internal static IEnumerable<List<(int, int)>> FindUnusedRegions(HashSet<(int, int)> usedPositions, int rows, int cols)
+    internal static IEnumerable<List<(int, int)>> FindUnusedRegions(HashSet<(int, int)> usedPositions, int totalRows, int totalColumns)
     {
         var regions = new List<List<(int, int)>>();
-        var visited = new bool[rows, cols];
-
-        for (int r = 0; r < rows; r++)
+        var visited = new bool[totalRows, totalColumns];
+    
+        for (int row = 0; row < totalRows; row++)
         {
-            for (int c = 0; c < cols; c++)
+            for (int column = 0; column < totalColumns; column++)
             {
-                if (!usedPositions.Contains((r, c)) && !visited[r, c])
+                if (!usedPositions.Contains((row, column)) && !visited[row, column])
                 {
                     var region = new List<(int, int)>();
                     var queue = new Queue<(int, int)>();
-                    queue.Enqueue((r, c));
-                    visited[r, c] = true;
-
+                    queue.Enqueue((row, column));
+                    visited[row, column] = true;
+    
                     while (queue.Count > 0)
                     {
-                        var (cr, cc) = queue.Dequeue();
-                        region.Add((cr, cc));
-                        for (int dr = -1; dr <= 1; dr++)
+                        var (currentRow, currentColumn) = queue.Dequeue();
+                        region.Add((currentRow, currentColumn));
+                        for (int rowOffset = -1; rowOffset <= 1; rowOffset++)
                         {
-                            for (int dc = -1; dc <= 1; dc++)
+                            for (int columnOffset = -1; columnOffset <= 1; columnOffset++)
                             {
-                                if (dr == 0 && dc == 0) continue;
-                                int nr = cr + dr, nc = cc + dc;
-                                if (nr >= 0 && nr < rows && nc >= 0 && nc < cols &&
-                                    !usedPositions.Contains((nr, nc)) && !visited[nr, nc])
+                                if (rowOffset == 0 && columnOffset == 0)
                                 {
-                                    queue.Enqueue((nr, nc));
-                                    visited[nr, nc] = true;
+                                    continue;
+                                }
+    
+                                int neighborRow = currentRow + rowOffset, neighborColumn = currentColumn + columnOffset;
+                                if (neighborRow >= 0 && neighborRow < totalRows && neighborColumn >= 0 && neighborColumn < totalColumns &&
+                                    !usedPositions.Contains((neighborRow, neighborColumn)) && !visited[neighborRow, neighborColumn])
+                                {
+                                    queue.Enqueue((neighborRow, neighborColumn));
+                                    visited[neighborRow, neighborColumn] = true;
                                 }
                             }
                         }
                     }
-                    if (region.Any()) regions.Add(region);
+                    if (region.Any())
+                    {
+                        regions.Add(region);
+                    }
                 }
             }
         }

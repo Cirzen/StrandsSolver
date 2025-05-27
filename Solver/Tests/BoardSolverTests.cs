@@ -1,46 +1,28 @@
 ﻿using Xunit;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
-namespace Solver;
+namespace Solver.Tests;
 
 // A simple mock ILogger for testing purposes
-public class MockLogger : ILogger
-{
-    public List<string> LoggedMessages { get; } = new List<string>();
-    public List<string> ErrorMessages { get; } = new List<string>();
-
-    public void Log(string message)
-    {
-        LoggedMessages.Add(message);
-    }
-
-    public void LogError(string message)
-    {
-        ErrorMessages.Add(message);
-    }
-}
 
 public class BoardSolverTests
 {
     private readonly BoardSolver _solver;
     private readonly MockLogger _mockLogger;
 
-    private readonly ProgressTracker _dummyProgressTracker = new ProgressTracker(
+    private readonly ProgressTracker _dummyProgressTracker = new(
         (words, wordsAttempted, heatMap) => Task.CompletedTask
     );
 
     public BoardSolverTests()
     {
-        _mockLogger = new MockLogger();
-        _solver = new BoardSolver(_mockLogger);
+        _mockLogger = new();
+        _solver = new(_mockLogger);
     }
 
     // Helper to create a WordPath for tests
     private WordPath CreateWordPath(string word, params (int, int)[] positions)
     {
-        return new WordPath(word, positions.ToList());
+        return new(word, positions.ToList());
     }
 
     // --- Tests for IsValidWordPlacement ---
@@ -111,11 +93,13 @@ public class BoardSolverTests
             for (int c = 0; c < 6; c++)
             {
                 if (!(r == 7 && c == 5)) // Leave one cell (7,5) open
+                {
                     currentUsedPositions.Add((r, c));
+                }
             }
         }
         // Smallest region is (7,5). Word "A" at (0,0) doesn't fit.
-        var candidates = _solver.GetRankedCandidateWordsForNextStep(allPossibleWords, currentUsedPositions, new HashSet<((int, int), (int, int))>(), _dummyProgressTracker, new HashSet<string>());
+        var candidates = _solver.GetRankedCandidateWordsForNextStep(allPossibleWords, currentUsedPositions, new(), _dummyProgressTracker, new());
         Assert.Empty(candidates);
     }
 
@@ -129,7 +113,7 @@ public class BoardSolverTests
             for (int c = 2; c < 6; c++)
                 currentUsedPositions.Add((r, c));
         }
-        var candidates = _solver.GetRankedCandidateWordsForNextStep(allPossibleWords, currentUsedPositions, new HashSet<((int, int), (int, int))>(), _dummyProgressTracker, new HashSet<string>());
+        var candidates = _solver.GetRankedCandidateWordsForNextStep(allPossibleWords, currentUsedPositions, new(), _dummyProgressTracker, new());
         Assert.Empty(candidates);
     }
 
@@ -142,7 +126,7 @@ public class BoardSolverTests
         for (int r = 1; r < 8; ++r) { for (int c = 0; c < 6; ++c) currentUsedPositions.Add((r, c)); } // Block rows 1-7
         for (int c = 3; c < 6; ++c) currentUsedPositions.Add((0, c)); // Block (0,3), (0,4), (0,5)
 
-        var candidates = _solver.GetRankedCandidateWordsForNextStep(allPossibleWords, currentUsedPositions, new HashSet<((int, int), (int, int))>(), _dummyProgressTracker, new HashSet<string>());
+        var candidates = _solver.GetRankedCandidateWordsForNextStep(allPossibleWords, currentUsedPositions, new(), _dummyProgressTracker, new());
         Assert.Empty(candidates);
     }
 
@@ -159,7 +143,7 @@ public class BoardSolverTests
         var word3 = CreateWordPath("CE", (0, 1), (0, 2));
         var allPossibleWords = new List<WordPath> { word1, word2, word3 };
 
-        var candidates = _solver.GetRankedCandidateWordsForNextStep(allPossibleWords, currentUsedPositions, new HashSet<((int, int), (int, int))>(), _dummyProgressTracker, new HashSet<string>());
+        var candidates = _solver.GetRankedCandidateWordsForNextStep(allPossibleWords, currentUsedPositions, new(), _dummyProgressTracker, new());
 
         Assert.Equal(3, candidates.Count);
         Assert.Equal("ACE", candidates[0].Word); // Highest score due to length tie-breaker and full coverage

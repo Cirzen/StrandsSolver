@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Solver;
+﻿namespace Solver;
 
 public interface ILogger
 {
@@ -14,22 +8,20 @@ public interface ILogger
 
 internal class StatusBarLogger : ILogger
 {
-    private readonly Action<string, bool> updateStatusBar;
+    private readonly Action<string, bool> _updateStatusBar;
 
     public StatusBarLogger(Action<string, bool> updateStatusBarAction)
     {
-        updateStatusBar = updateStatusBarAction;
+        _updateStatusBar = updateStatusBarAction;
     }
 
     public void Log(string message)
     {
-        // Implement logging to the status bar
-        updateStatusBar($"{message}", false);
+        _updateStatusBar($"{message}", false);
     }
 
     public void LogError(string message)
     {
-        // Implement error logging to the status bar
-        updateStatusBar($"[ERROR] {message}", true);
+        _updateStatusBar($"[ERROR] {message}", true);
     }
 }

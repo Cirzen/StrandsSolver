@@ -1,9 +1,6 @@
 using Microsoft.Win32;
 using Solver.Configuration;
-using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Windows;
 
 namespace Solver;
@@ -21,14 +18,14 @@ public partial class SettingsWindow : Window
 
     private void InitializeIntervalOptions()
     {
-        IntervalOptions = new List<ProgressIntervalOption>
+        IntervalOptions = new()
         {
-            new ProgressIntervalOption("Real-time (100ms)", 100),
-            new ProgressIntervalOption("Very Fast (250ms)", 250),
-            new ProgressIntervalOption("Fast (500ms)", 500),
-            new ProgressIntervalOption("Normal (1000ms)", 1000),
-            new ProgressIntervalOption("Slow (2000ms)", 2000),
-            new ProgressIntervalOption("Very Slow (5000ms)", 5000)
+            new("Real-time (100ms)", 100),
+            new("Very Fast (250ms)", 250),
+            new("Fast (500ms)", 500),
+            new("Normal (1000ms)", 1000),
+            new("Slow (2000ms)", 2000),
+            new("Very Slow (5000ms)", 5000)
         };
         ProgressIntervalComboBox.ItemsSource = IntervalOptions;
     }
@@ -49,7 +46,7 @@ public partial class SettingsWindow : Window
 
     private void BrowseButton_Click(object sender, RoutedEventArgs e)
     {
-        OpenFileDialog openFileDialog = new OpenFileDialog
+        OpenFileDialog openFileDialog = new()
         {
             Filter = "Text files (*.txt)|*.txt|All files (*.*)|*.*",
             Title = "Select Word List File"

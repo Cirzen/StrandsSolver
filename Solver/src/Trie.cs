@@ -7,7 +7,7 @@ public class Trie
 
     public Trie()
     {
-        _root = new TrieNode();
+        _root = new();
     }
 
     /// <summary>
@@ -20,7 +20,7 @@ public class Trie
     /// </summary>
     public void Clear()
     {
-        _root = new TrieNode();
+        _root = new();
     }
 
     /// <summary>
@@ -36,7 +36,7 @@ public class Trie
         {
             if (!node.Children.ContainsKey(c))
             {
-                node.Children[c] = new TrieNode();
+                node.Children[c] = new();
             }
             node = node.Children[c];
         }
@@ -51,7 +51,7 @@ public class Trie
     public bool Search(string word)
     {
         var node = FindNode(word);
-        return node != null && node.IsEndOfWord;
+        return node is { IsEndOfWord: true };
     }
 
     /// <summary>

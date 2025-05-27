@@ -1,4 +1,3 @@
-using Solver;
 using Xunit;
 
 namespace Solver.Tests;
@@ -11,7 +10,7 @@ public class WordFinderTests
     public void HasEdgeCrossing_ShouldReturnTrue_WhenEdgesCross()
     {
         // Arrange
-        var wordFinder = new WordFinder(_trie, 0, 0); // Trie is not needed for this test
+        var wordFinder = new WordFinder(_trie, 0, 0);
         var path = new List<(int, int)>
         {
             (0, 0), // A
@@ -53,11 +52,11 @@ public class WordFinderTests
     public void EdgesCross_ShouldReturnTrue_WhenEdgesIntersect()
     {
         // Arrange
-        var wordFinder = new WordFinder(_trie, 0, 0); // Trie is not needed for this test
+        var wordFinder = new WordFinder(_trie, 0, 0);
         var edge1Start = (0, 0); // A
-        var edge1End = (1, 1);   // E
+        var edge1End   = (1, 1); // E
         var edge2Start = (0, 1); // B
-        var edge2End = (1, 0);   // D
+        var edge2End   = (1, 0); // D
 
         // Act
         var result = wordFinder.EdgesCross(edge1Start, edge1End, edge2Start, edge2End);
@@ -66,13 +65,11 @@ public class WordFinderTests
         Assert.True(result, "Expected EdgesCross to return true for intersecting edges.");
     }
 
-
-
     [Fact]
     public void EdgesCross_ShouldReturnFalse_WhenEdgesDoNotIntersect()
     {
         // Arrange
-        var wordFinder = new WordFinder(_trie, 0, 0); // Trie is not needed for this test
+        var wordFinder = new WordFinder(_trie, 0, 0);
         var edge1Start = (0, 0); // A
         var edge1End = (0, 1);   // B
         var edge2Start = (1, 0); // D

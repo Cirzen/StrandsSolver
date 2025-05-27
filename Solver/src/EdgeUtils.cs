@@ -107,13 +107,28 @@ public static class EdgeUtils
                 // And vice-versa.
 
                 // If p2 is on segment p1-q1 AND p2 is not an endpoint of p1-q1
-                if (OnSegment(p1, p2, q1) && p2 != p1 && p2 != q1) return true;
+                if (OnSegment(p1, p2, q1) && p2 != p1 && p2 != q1)
+                {
+                    return true;
+                }
+
                 // If q2 is on segment p1-q1 AND q2 is not an endpoint of p1-q1
-                if (OnSegment(p1, q2, q1) && q2 != p1 && q2 != q1) return true;
+                if (OnSegment(p1, q2, q1) && q2 != p1 && q2 != q1)
+                {
+                    return true;
+                }
+
                 // If p1 is on segment p2-q2 AND p1 is not an endpoint of p2-q2
-                if (OnSegment(p2, p1, q2) && p1 != p2 && p1 != q2) return true;
+                if (OnSegment(p2, p1, q2) && p1 != p2 && p1 != q2)
+                {
+                    return true;
+                }
+
                 // If q1 is on segment p2-q2 AND q1 is not an endpoint of p2-q2
-                if (OnSegment(p2, q1, q2) && q1 != p2 && q1 != q2) return true;
+                if (OnSegment(p2, q1, q2) && q1 != p2 && q1 != q2)
+                {
+                    return true;
+                }
             }
         }
         return false;

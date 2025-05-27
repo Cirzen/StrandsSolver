@@ -11,7 +11,7 @@ internal class ProgressTracker
 
     // Property to store the latest heatmap
     // Key: (row, col), Value: frequency or a normalized heat value
-    public Dictionary<(int, int), int> CurrentHeatMap { get; set; } = new Dictionary<(int, int), int>();
+    public Dictionary<(int, int), int> CurrentHeatMap { get; set; } = new();
 
     public ProgressTracker(Func<List<WordPath>, long, Dictionary<(int, int), int>, Task> reportProgress) // Updated signature
     {

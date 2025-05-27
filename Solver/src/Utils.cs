@@ -23,50 +23,6 @@ public class Utils
         return board;
     }
     
-    public static List<WordPath> SelectKnownPathsFromConsole(IEnumerable<string> knownWords, List<WordPath> allPaths)
-    {
-        var selectedPaths = new List<WordPath>();
-
-        foreach (var word in knownWords)
-        {
-            var matches = allPaths
-                .Where(wp => wp.Word.Equals(word, StringComparison.OrdinalIgnoreCase))
-                .ToList();
-
-            switch (matches.Count)
-            {
-                case 0:
-                    Console.WriteLine($"No paths found for word: {word}");
-                    continue;
-                case > 1:
-                {
-                    Console.WriteLine($"\nPaths for \"{word}\":");
-                    for (int i = 0; i < matches.Count; i++)
-                    {
-                        Console.WriteLine($"[{i}] {matches[i]}");
-                    }
-
-                    Console.Write("Select index: ");
-                    if (int.TryParse(Console.ReadLine(), out int index) && index >= 0 && index < matches.Count)
-                    {
-                        selectedPaths.Add(matches[index]);
-                    }
-                    else
-                    {
-                        Console.WriteLine("Invalid selection. Skipping.");
-                    }
-
-                    break;
-                }
-                default:
-                    selectedPaths.Add(matches[0]);
-                    break;
-            }
-        }
-
-        return selectedPaths;
-    }
-
     /// <summary>
     /// Finds all WordPath objects from a list of all available paths that match the given known word strings.
     /// </summary>
@@ -108,23 +64,15 @@ public class Utils
             if (matches.Any())
             {
                 pathsMatchingKnownWords.AddRange(matches); // Add all found paths for this known word
-                if (matches.Count > 1)
-                {
-                    logger?.Log($"SelectKnownPaths: Found {matches.Count} paths for known word '{knownWordStr}'. All added as potential options.");
-                }
-                else
-                {
-                    logger?.Log($"SelectKnownPaths: Found 1 path for known word '{knownWordStr}'. Added as a potential option.");
-                }
+                logger?.Log(matches.Count > 1
+                    ? $"SelectKnownPaths: Found {matches.Count} paths for known word '{knownWordStr}'. All added as potential options."
+                    : $"SelectKnownPaths: Found 1 path for known word '{knownWordStr}'. Added as a potential option.");
             }
             else
             {
                 // This is a significant situation: a "known word" (which implies it should be in the solution)
                 // does not have any corresponding path on the current board.
                 logger?.LogError($"SelectKnownPaths: CRITICAL - No paths found on board for known word: '{knownWordStr}'. This word cannot be part of any solution with the current board's paths.");
-                // Depending on desired behavior, the SolverEngine might need to halt or inform the user prominently.
-                // For now, this method will simply not add any paths for this word.
-                // If the calling code expects all knownWords to be resolvable to paths, it will need to check.
             }
         }
         logger?.Log($"SelectKnownPaths: Returning {pathsMatchingKnownWords.Count} total paths corresponding to known words.");

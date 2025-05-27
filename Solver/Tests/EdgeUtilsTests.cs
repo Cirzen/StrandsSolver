@@ -1,6 +1,4 @@
 using Xunit;
-using System.Collections.Generic;
-using System.Linq;
 
 namespace Solver.Tests;
 
@@ -142,7 +140,7 @@ public class EdgeUtilsTests
     // --- Tests for PathSelfIntersects ---
     private WordPath CreateWordPath(string word, params (int, int)[] positions)
     {
-        return new WordPath(word, positions.ToList());
+        return new(word, positions.ToList());
     }
 
     [Fact]
