@@ -1,0 +1,59 @@
+<Window x:Class="Solver.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:Solver"
+        xmlns:config="clr-namespace:Solver.Configuration"
+        mc:Ignorable="d"
+        Title="Settings" Height="350" Width="475"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize">
+    <Window.Resources>
+        <ObjectDataProvider MethodName="GetValues" ObjectType="{x:Type sys:Enum}" x:Key="SolutionDoubleClickActionEnumValues" xmlns:sys="clr-namespace:System;assembly=mscorlib">
+            <ObjectDataProvider.MethodParameters>
+                <x:Type TypeName="config:SolutionDoubleClickAction"/>
+            </ObjectDataProvider.MethodParameters>
+        </ObjectDataProvider>
+    </Window.Resources>
+    <Grid Margin="15">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+
+        <Label Grid.Row="0" Grid.Column="0" Content="Word List Path:" VerticalAlignment="Center"/>
+        <TextBox Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" x:Name="WordListPathTextBox" Margin="0,0,5,0" VerticalAlignment="Center"/>
+        <Button Grid.Row="1" Grid.Column="2" x:Name="BrowseButton" Content="Browse..." Padding="10,2" Click="BrowseButton_Click" VerticalAlignment="Center"/>
+        <TextBlock Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3" Text="Path to the dictionary file (e.g., sowpods.txt)." FontSize="10" Foreground="Gray" Margin="0,0,0,10"/>
+        
+        <Label Grid.Row="3" Grid.Column="0" Content="Progress Update Speed:" VerticalAlignment="Center"/>
+        <ComboBox Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="3" x:Name="ProgressIntervalComboBox" Margin="0,0,0,5"
+                  DisplayMemberPath="DisplayName" SelectedValuePath="Milliseconds"/>
+        <TextBlock Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="3" FontSize="10" Foreground="Gray" TextWrapping="Wrap" Margin="0,0,0,10">
+            Determines how often the UI updates. Faster updates may slightly increase search time. Minimum 100ms.
+        </TextBlock>
+
+        <Label Grid.Row="6" Grid.Column="0" Content="Solution Word Double-Click:" VerticalAlignment="Center" Margin="0,5,0,0"/>
+        <ComboBox Grid.Row="7" Grid.Column="0" Grid.ColumnSpan="3" x:Name="DoubleClickBehaviorComboBox" Margin="0,0,0,5"
+                  ItemsSource="{Binding Source={StaticResource SolutionDoubleClickActionEnumValues}}"/>
+        
+        <StackPanel Grid.Row="9" Grid.Column="0" Grid.ColumnSpan="3" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button x:Name="SaveButton" Content="Save" Width="80" Margin="0,0,10,0" Padding="5" Click="SaveButton_Click"/>
+            <Button x:Name="CancelButton" Content="Cancel" Width="80" Padding="5" Click="CancelButton_Click" IsCancel="True"/>
+        </StackPanel>
+    </Grid>
+</Window>
