@@ -24,4 +24,9 @@ public class AppSettings
     /// Gets or sets the selected application theme.
     /// </summary>
     public AppTheme SelectedTheme { get; set; } = AppTheme.Light;
+    /// <summary>
+    /// Gets or sets the opacity for normal (non-highlighted) solution path lines.
+    /// Value should be between 0 (transparent) and 255 (opaque).
+    /// </summary>
+    public byte PathOpacityNormal { get; set; } = 180; // Default to ~70% opacity
 }

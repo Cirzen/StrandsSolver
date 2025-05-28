@@ -62,7 +62,10 @@ public class ConfigurationService
         return new()
         {
             WordListPath = "sowpods.txt",
-            ProgressUpdateIntervalMilliseconds = 500
+            ProgressUpdateIntervalMilliseconds = 500,
+            DoubleClickBehavior = SolutionDoubleClickAction.AddToExcluded,
+            SelectedTheme = AppTheme.Light,
+            PathOpacityNormal = 180 // 0-255
         };
     }
 }

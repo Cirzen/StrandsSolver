@@ -587,26 +587,28 @@ public partial class MainWindow : Window
         {
             bool isHighlighted = (wordPath == _currentlyHighlightedPath);
             var random = new Random(wordPath.Word.GetHashCode());
-            var color = Color.FromArgb(255, (byte)random.Next(100, 200), (byte)random.Next(100, 200), (byte)random.Next(100, 200));
-
+            
             SolidColorBrush brush;
             double strokeThickness = 4;
             DropShadowEffect glowEffect = null;
 
             if (isHighlighted)
             {
-                brush = new(Colors.Gold);
+                brush = new(Colors.Gold); // Highlighted line is fully opaque gold
                 strokeThickness = 6;
                 glowEffect = new()
                 {
-                    Color = Colors.Yellow,
+                    Color = Colors.Yellow, // Glow effect color
                     ShadowDepth = 0,
                     BlurRadius = 10,
-                    Opacity = 0.9
+                    Opacity = 0.9 // Opacity of the glow effect itself
                 };
             }
             else
             {
+                // Use configured opacity for normal lines
+                byte lineOpacity = App.ConfigService.Settings.PathOpacityNormal;
+                var color = Color.FromArgb(lineOpacity, (byte)random.Next(100, 200), (byte)random.Next(100, 200), (byte)random.Next(100, 200));
                 brush = new(color);
             }
 
@@ -935,26 +937,28 @@ public partial class MainWindow : Window
         {
             bool isHighlighted = (wordPath == _currentlyHighlightedPath);
             var random = new Random(wordPath.Word.GetHashCode());
-            var color = Color.FromArgb(255, (byte)random.Next(100, 200), (byte)random.Next(100, 200), (byte)random.Next(100, 200));
-
+            
             SolidColorBrush brush;
             double strokeThickness = 4;
             DropShadowEffect glowEffect = null;
 
             if (isHighlighted)
             {
-                brush = new(Colors.Gold);
+                brush = new(Colors.Gold); // Highlighted line is fully opaque gold
                 strokeThickness = 6;
                 glowEffect = new()
                 {
-                    Color = Colors.Yellow,
+                    Color = Colors.Yellow, // Glow effect color
                     ShadowDepth = 0,
                     BlurRadius = 10,
-                    Opacity = 0.9
+                    Opacity = 0.9 // Opacity of the glow effect itself
                 };
             }
             else
             {
+                // Use configured opacity for normal lines
+                byte lineOpacity = App.ConfigService.Settings.PathOpacityNormal;
+                var color = Color.FromArgb(lineOpacity, (byte)random.Next(100, 200), (byte)random.Next(100, 200), (byte)random.Next(100, 200));
                 brush = new(color);
             }
 
