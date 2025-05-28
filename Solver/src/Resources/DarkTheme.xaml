@@ -14,10 +14,14 @@
     <SolidColorBrush x:Key="AccentButtonForegroundColor" Color="White"/>
     
     <!-- Specific Action Button Colors -->
-    <SolidColorBrush x:Key="IncludeButtonBackgroundColor" Color="DarkGreen"/> <!-- Consider a shade that fits dark theme better if needed -->
+    <SolidColorBrush x:Key="IncludeButtonBackgroundColor" Color="DarkGreen"/>
     <SolidColorBrush x:Key="IncludeButtonForegroundColor" Color="White"/>
-    <SolidColorBrush x:Key="ExcludeButtonBackgroundColor" Color="DarkRed"/> <!-- Consider a shade that fits dark theme better if needed -->
+    <SolidColorBrush x:Key="ExcludeButtonBackgroundColor" Color="DarkRed"/>
     <SolidColorBrush x:Key="ExcludeButtonForegroundColor" Color="White"/>
+    <SolidColorBrush x:Key="IncludeButtonDisabledBackgroundColor" Color="#FF2E8B57"/> <!-- SeaGreen (darker green) -->
+    <SolidColorBrush x:Key="IncludeButtonDisabledForegroundColor" Color="#FFA9A9A9"/> <!-- DarkGray -->
+    <SolidColorBrush x:Key="ExcludeButtonDisabledBackgroundColor" Color="#FF8B0000"/> <!-- DarkRed (can be same or slightly muted) -->
+    <SolidColorBrush x:Key="ExcludeButtonDisabledForegroundColor" Color="#FFA9A9A9"/> <!-- DarkGray -->
 
     <!-- TextBox Colors -->
     <SolidColorBrush x:Key="TextBoxBackgroundColor" Color="#3F3F46"/>

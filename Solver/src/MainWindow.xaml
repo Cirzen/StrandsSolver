@@ -71,14 +71,38 @@
                                                     <ColumnDefinition Width="Auto"/>
                                                 </Grid.ColumnDefinitions>
                                                 <TextBlock Text="{Binding Word}" VerticalAlignment="Center" Foreground="{DynamicResource TextForegroundColor}"/>
-                                                <Button Grid.Column="1" Content="✔️" Margin="5,0" Padding="3" FontSize="10" ToolTip="Add to Included" 
+                                                <Button Grid.Column="1" Content="✔️" Margin="2,0,1,0" Padding="3" FontSize="12" ToolTip="Add to Included" 
                                                         CommandParameter="{Binding}" Click="SolutionIncludeButton_Click"
-                                                        Visibility="{Binding IsUserIncluded, Converter={StaticResource InverseBooleanConverter}}"
-                                                        Background="{DynamicResource IncludeButtonBackgroundColor}" Foreground="{DynamicResource IncludeButtonForegroundColor}"/>
-                                                <Button Grid.Column="2" Content="❌" Margin="5,0" Padding="3" FontSize="10" ToolTip="Add to Excluded" 
+                                                        IsEnabled="{Binding IsUserIncluded, Converter={StaticResource InverseBooleanConverter}}">
+                                                    <Button.Style>
+                                                        <Style TargetType="Button">
+                                                            <Setter Property="Background" Value="{DynamicResource IncludeButtonBackgroundColor}"/>
+                                                            <Setter Property="Foreground" Value="{DynamicResource IncludeButtonForegroundColor}"/>
+                                                            <Style.Triggers>
+                                                                <Trigger Property="IsEnabled" Value="False">
+                                                                    <Setter Property="Background" Value="{DynamicResource IncludeButtonDisabledBackgroundColor}"/>
+                                                                    <Setter Property="Foreground" Value="{DynamicResource IncludeButtonDisabledForegroundColor}"/>
+                                                                </Trigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Button.Style>
+                                                </Button>
+                                                <Button Grid.Column="2" Content="❌" Margin="1,0,2,0" Padding="3" FontSize="11" ToolTip="Add to Excluded" 
                                                         CommandParameter="{Binding}" Click="SolutionExcludeButton_Click"
-                                                        Visibility="{Binding IsUserExcluded, Converter={StaticResource InverseBooleanConverter}}"
-                                                        Background="{DynamicResource ExcludeButtonBackgroundColor}" Foreground="{DynamicResource ExcludeButtonForegroundColor}"/>
+                                                        IsEnabled="{Binding IsUserExcluded, Converter={StaticResource InverseBooleanConverter}}">
+                                                    <Button.Style>
+                                                        <Style TargetType="Button">
+                                                            <Setter Property="Background" Value="{DynamicResource ExcludeButtonBackgroundColor}"/>
+                                                            <Setter Property="Foreground" Value="{DynamicResource ExcludeButtonForegroundColor}"/>
+                                                            <Style.Triggers>
+                                                                <Trigger Property="IsEnabled" Value="False">
+                                                                    <Setter Property="Background" Value="{DynamicResource ExcludeButtonDisabledBackgroundColor}"/>
+                                                                    <Setter Property="Foreground" Value="{DynamicResource ExcludeButtonDisabledForegroundColor}"/>
+                                                                </Trigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Button.Style>
+                                                </Button>
                                             </Grid>
                                         </Border>
                                         <ControlTemplate.Triggers>

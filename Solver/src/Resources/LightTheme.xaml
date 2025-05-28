@@ -18,6 +18,10 @@
     <SolidColorBrush x:Key="IncludeButtonForegroundColor" Color="White"/>
     <SolidColorBrush x:Key="ExcludeButtonBackgroundColor" Color="DarkRed"/>
     <SolidColorBrush x:Key="ExcludeButtonForegroundColor" Color="White"/>
+    <SolidColorBrush x:Key="IncludeButtonDisabledBackgroundColor" Color="#FF90EE90"/> <!-- LightGreen -->
+    <SolidColorBrush x:Key="IncludeButtonDisabledForegroundColor" Color="#FFD3D3D3"/> <!-- LightGray -->
+    <SolidColorBrush x:Key="ExcludeButtonDisabledBackgroundColor" Color="#FFF08080"/> <!-- LightCoral -->
+    <SolidColorBrush x:Key="ExcludeButtonDisabledForegroundColor" Color="#FFD3D3D3"/> <!-- LightGray -->
 
     <!-- TextBox Colors -->
     <SolidColorBrush x:Key="TextBoxBackgroundColor" Color="White"/>
