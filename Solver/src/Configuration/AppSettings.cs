@@ -1,5 +1,11 @@
 namespace Solver.Configuration;
 
+public enum AppTheme
+{
+    Light,
+    Dark
+}
+
 public class AppSettings
 {
     /// <summary>
@@ -14,4 +20,8 @@ public class AppSettings
     /// Behavior for double-clicking a solution word.
     /// </summary>
     public SolutionDoubleClickAction DoubleClickBehavior { get; set; } = SolutionDoubleClickAction.AddToExcluded;
+    /// <summary>
+    /// Gets or sets the selected application theme.
+    /// </summary>
+    public AppTheme SelectedTheme { get; set; } = AppTheme.Light;
 }

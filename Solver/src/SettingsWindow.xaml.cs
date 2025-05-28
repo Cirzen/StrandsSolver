@@ -42,6 +42,8 @@ public partial class SettingsWindow : Window
 
         // Load DoubleClickBehavior setting
         DoubleClickBehaviorComboBox.SelectedItem = App.ConfigService.Settings.DoubleClickBehavior;
+        // Load Theme setting
+        ThemeComboBox.SelectedItem = App.ConfigService.Settings.SelectedTheme;
     }
 
     private void BrowseButton_Click(object sender, RoutedEventArgs e)
@@ -128,6 +130,16 @@ public partial class SettingsWindow : Window
         else // Should not happen if ComboBox is populated and has a default
         {
             App.ConfigService.Settings.DoubleClickBehavior = SolutionDoubleClickAction.AddToExcluded; // Fallback
+        }
+
+        // Save Theme setting
+        if (ThemeComboBox.SelectedItem != null)
+        {
+            App.ConfigService.Settings.SelectedTheme = (AppTheme)ThemeComboBox.SelectedItem;
+        }
+        else
+        {
+            App.ConfigService.Settings.SelectedTheme = AppTheme.Light; // Fallback
         }
 
         App.ConfigService.SaveSettings();

@@ -11,6 +11,7 @@
 
     <ItemGroup>
       <None Remove="DemoBoards.txt" />
+      <None Remove="Resources\DemoBoards.txt" />
     </ItemGroup>
 
     <ItemGroup>
@@ -19,6 +20,10 @@
         <XamlRuntime>Wpf</XamlRuntime>
         <SubType>Designer</SubType>
       </ApplicationDefinition>
+    </ItemGroup>
+
+    <ItemGroup>
+      <Content Include="Resources\DemoBoards.txt" />
     </ItemGroup>
 
     <ItemGroup>

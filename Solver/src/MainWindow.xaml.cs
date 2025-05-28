@@ -186,7 +186,10 @@ public partial class MainWindow : Window
                     Height = 30,
                     HorizontalContentAlignment = HorizontalAlignment.Center,
                     VerticalContentAlignment = VerticalAlignment.Center,
-                    Margin = new(2)
+                    Margin = new(2),
+                    Background = (SolidColorBrush)Application.Current.Resources["TextBoxBackgroundColor"],
+                    Foreground = (SolidColorBrush)Application.Current.Resources["TextForegroundColor"],
+                    BorderBrush = (SolidColorBrush)Application.Current.Resources["BorderColorBrush"]
                 };
 
                 // Display uppercase but store lowercase
@@ -199,8 +202,13 @@ public partial class MainWindow : Window
                     }
 
                     string input = e.Text.ToLower();
-                    textBox.Text = input.ToUpper();
-                    e.Handled = true;
+                    // Check if the input is a single letter, if not, handle it (e.g., clear or ignore)
+                    if (input.Length == 1 && char.IsLetter(input[0]))
+                    {
+                        textBox.Text = input.ToUpper();
+                        textBox.CaretIndex = 1; // Move caret to the end of the new text.
+                    }
+                    e.Handled = true; // Prevent further processing of the input.
 
                     int nextCol = (currentCol + 1) % 6;
                     int nextRow = currentRow + (currentCol + 1) / 6;
@@ -317,6 +325,7 @@ public partial class MainWindow : Window
                 BoardGrid.Children.Add(tb);
             }
         }
+        SetBoardEnabled(true);
     }
 
     private void SolveButton_Click(object sender, RoutedEventArgs e)
@@ -422,8 +431,11 @@ public partial class MainWindow : Window
     {
         foreach (var textBox in _boardTextBoxes)
         {
+            if (textBox == null) continue;
             textBox.IsEnabled = isEnabled;
-            textBox.Background = isEnabled ? Brushes.White : Brushes.LightGray;
+            textBox.Background = isEnabled ? (SolidColorBrush)Application.Current.Resources["TextBoxBackgroundColor"] : (SolidColorBrush)Application.Current.Resources["TextBoxDisabledBackgroundColor"];
+            textBox.Foreground = (SolidColorBrush)Application.Current.Resources["TextForegroundColor"];
+            textBox.BorderBrush = (SolidColorBrush)Application.Current.Resources["BorderColorBrush"];
         }
     }
 
@@ -445,7 +457,7 @@ public partial class MainWindow : Window
         Dispatcher.Invoke(() =>
         {
             StatusBarText.Text = message;
-            StatusBarText.Foreground = isError ? Brushes.Red : Brushes.Black;
+            StatusBarText.Foreground = isError ? Brushes.Red : (SolidColorBrush)Application.Current.Resources["StatusBarForegroundColor"];
         });
     }
 
@@ -640,6 +652,7 @@ public partial class MainWindow : Window
     private void SettingsButton_Click(object sender, RoutedEventArgs e)
     {
         var settingsWindow = new SettingsWindow { Owner = this };
+        AppTheme originalTheme = App.ConfigService.Settings.SelectedTheme;
         bool? result = settingsWindow.ShowDialog();
 
         if (result != true)
@@ -647,7 +660,17 @@ public partial class MainWindow : Window
             return;
         }
 
+        bool themeChanged = App.ConfigService.Settings.SelectedTheme != originalTheme;
+
         // True if settings were saved
+        if (themeChanged)
+        {
+            ((App)Application.Current).ApplyTheme(App.ConfigService.Settings.SelectedTheme);
+            // Re-apply styles to board TextBoxes as their properties were set programmatically
+            // and might not update automatically from DynamicResource changes triggered at App level.
+            SetBoardEnabled(!_isSolverRunning); // Re-apply based on current solver state
+        }
+        
         UpdateStatusBar("Settings saved. Attempting to reload dictionary...");
         try
         {
