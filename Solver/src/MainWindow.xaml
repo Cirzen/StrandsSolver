@@ -31,7 +31,7 @@
             <StackPanel Orientation="Horizontal">
                 <Button x:Name="DebugButton" Content="Populate Test Board" Margin="0,0,5,0" Padding="10,5" Click="DebugPopulateButton_Click" Background="{DynamicResource ButtonBackgroundColor}" Foreground="{DynamicResource ButtonForegroundColor}"/>
                 <Button x:Name="ClearButton" Content="Clear" Margin="0,0,5,0" Padding="10,5" Click="ClearButton_Click" Background="{DynamicResource ButtonBackgroundColor}" Foreground="{DynamicResource ButtonForegroundColor}"/>
-                <Button x:Name="SolveButton" Content="Solve" Padding="10,5" Click="SolveButton_Click" FontWeight="Bold" Background="{DynamicResource AccentButtonBackgroundColor}" Foreground="{DynamicResource AccentButtonForegroundColor}"/>
+                <Button x:Name="SolveButton" Content="Solve" Margin="10,0,0,0" Padding="15,8" Click="SolveButton_Click" FontWeight="Bold" FontSize="18" MinWidth="150" Background="{DynamicResource AccentButtonBackgroundColor}" Foreground="{DynamicResource AccentButtonForegroundColor}"/>
             </StackPanel>
 
             <Button Grid.Column="1" x:Name="SettingsButton" Content="⚙" Margin="5,0,0,0" Padding="8,5" Click="SettingsButton_Click" 
