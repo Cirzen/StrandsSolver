@@ -1,3 +1,5 @@
+using System.Text;
+
 namespace Solver;
 
 public class Utils
@@ -77,5 +79,19 @@ public class Utils
         }
         logger?.Log($"SelectKnownPaths: Returning {pathsMatchingKnownWords.Count} total paths corresponding to known words.");
         return pathsMatchingKnownWords;
+    }
+
+    internal static string ConvertBoardToString(char[,] board)
+    {
+        var dimensions = (board.GetLength(0), board.GetLength(1));
+        var builder = new StringBuilder(dimensions.Item1 * dimensions.Item2);
+        for (int row = 0; row < dimensions.Item1; row++)
+        {
+            for (int col = 0; col < dimensions.Item2; col++)
+            {
+                builder.Append(board[row, col]);
+            }
+        }
+        return builder.ToString();
     }
 }

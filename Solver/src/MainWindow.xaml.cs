@@ -496,6 +496,11 @@ public partial class MainWindow : Window
             boardWasActuallyCleared = true;
         }
 
+        if (boardWasActuallyCleared) // If any part of the board/solution was cleared
+        {
+            _solverEngine.ClearPrePruningCache();
+        }
+
         if (boardWasActuallyCleared || !_isBoardAlreadyClear)
         {
             UpdateStatusBar("Board and solution display cleared. Click Clear again to clear Include/Exclude lists.");
@@ -531,6 +536,7 @@ public partial class MainWindow : Window
     private void DebugPopulateButton_Click(object sender, RoutedEventArgs e)
     {
         PopulateBoardWithDebugData();
+        _solverEngine.ClearPrePruningCache(); // Clear cache as board has changed
     }
 
     private void PopulateBoardWithDebugData()

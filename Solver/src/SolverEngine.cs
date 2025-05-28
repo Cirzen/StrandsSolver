@@ -8,6 +8,12 @@ internal class SolverEngine
     private static CancellationTokenSource? _ctSource;
     private readonly ILogger _logger;
 
+    private string? _cachedBoardStringForPrePruning; // For WordFinder raw paths
+    private List<WordPath>? _cachedPrePrunedWordPaths; // For WordFinder raw paths
+
+    private string? _cachedBoardStringForProblematicFilter; // For FilterProblematicStarterWords output
+    private List<WordPath>? _cachedPathsAfterProblematicFilter; // For FilterProblematicStarterWords output
+
     public SolverEngine(ILogger logger)
     {
         _logger = logger;
@@ -36,12 +42,22 @@ internal class SolverEngine
                 }
             }
             _logger?.Log($"Dictionary loaded into Trie from {filePath}. {wordCount} words added.");
+            ClearPrePruningCache(); // Clear all board-specific caches when Trie changes
         }
         else
         {
             _logger?.LogError($"Dictionary file not found: {filePath}");
             throw new FileNotFoundException($"Dictionary file not found: {filePath}.");
         }
+    }
+
+    public void ClearPrePruningCache()
+    {
+        _cachedBoardStringForPrePruning = null;
+        _cachedPrePrunedWordPaths = null;
+        _cachedBoardStringForProblematicFilter = null;
+        _cachedPathsAfterProblematicFilter = null;
+        _logger?.Log("All board-specific caches cleared (raw paths and problematic filter).");
     }
 
     public async Task<BoardSolver.BoardSolution> ExecuteAsync(char[,] board, IEnumerable<string> knownWords, ProgressTracker progressTracker, IEnumerable<string> wordsToExclude)
@@ -58,9 +74,10 @@ internal class SolverEngine
                 _logger?.LogError($"Failed to initialize Trie during ExecuteAsync: {ex.Message}");
                 throw;
             }
-        }
+        }   
 
         knownWords ??= Enumerable.Empty<string>();
+        wordsToExclude ??= Enumerable.Empty<string>(); 
         _ctSource = new();
 
         foreach (var word in knownWords.Where(word => !Trie.Search(word)))
@@ -68,32 +85,74 @@ internal class SolverEngine
             Trie.Insert(word);
         }
 
-        var finder = new WordFinder(Trie, 8, 6);
-        var allWordPathsFromFinder = finder.DepthFirstSearch(board);
+        string currentBoardString = Utils.ConvertBoardToString(board);
+        List<WordPath> rawPathsFromBoardScan;
 
-        if (wordsToExclude is not null && wordsToExclude.Any())
+        // 1. Get raw paths for the board: from cache or by new scan.
+        if (currentBoardString == _cachedBoardStringForPrePruning && _cachedPrePrunedWordPaths != null)
         {
-            var exclusionSet = new HashSet<string>(wordsToExclude.Select(w => w.ToLowerInvariant()));
-            int originalCount = allWordPathsFromFinder.Count;
-            allWordPathsFromFinder = allWordPathsFromFinder.Where(wp => !exclusionSet.Contains(wp.Word.ToLowerInvariant())).ToList();
-            _logger?.Log($"Filtered out {originalCount - allWordPathsFromFinder.Count} user-excluded words. Word path count now: {allWordPathsFromFinder.Count}");
+            _logger?.Log("Using cached raw word paths for the board.");
+            rawPathsFromBoardScan = new List<WordPath>(_cachedPrePrunedWordPaths);
+        }
+        else
+        {
+            _logger?.Log("Board has changed or no raw path cache. Performing board scan with WordFinder (DFS).");
+            var finder = new WordFinder(Trie, 8, 6); 
+            rawPathsFromBoardScan = finder.DepthFirstSearch(board);
+
+            _cachedPrePrunedWordPaths = new List<WordPath>(rawPathsFromBoardScan); 
+            _cachedBoardStringForPrePruning = currentBoardString; 
+            _logger?.Log($"Board scan complete. Found {rawPathsFromBoardScan.Count} raw paths. Cached.");
+            
+            // If raw paths are re-calculated, the problematic filter cache is also invalid.
+            _cachedBoardStringForProblematicFilter = null; 
+            _cachedPathsAfterProblematicFilter = null;
+            _logger?.Log("Invalidated problematic starter words cache due to new raw path calculation.");
         }
 
-        var sortedAllWordPaths = allWordPathsFromFinder
-            .OrderByDescending(w => w.Word.Length)
-            .ThenBy(w => w.Word)
-            .ToList();
-        _logger?.Log($"Total usable word paths after DFS and exclusion: {sortedAllWordPaths.Count}");
+        // 2. Apply FilterProblematicStarterWords (cached based on board string).
+        List<WordPath> pathsAfterProblematicFilter;
+        if (currentBoardString == _cachedBoardStringForProblematicFilter && _cachedPathsAfterProblematicFilter != null)
+        {
+            _logger?.Log("Using cached paths after problematic starter words filter.");
+            pathsAfterProblematicFilter = new List<WordPath>(_cachedPathsAfterProblematicFilter);
+        }
+        else
+        {
+            _logger?.Log("Board has changed or no cache for problematic filter. Applying FilterProblematicStarterWords to raw paths.");
+            var sortedRawPaths = rawPathsFromBoardScan // Use the up-to-date rawPathsFromBoardScan
+                .OrderByDescending(w => w.Word.Length)
+                .ThenBy(w => w.Word)
+                .ToList();
+            
+            pathsAfterProblematicFilter = SolverPreProcessor.FilterProblematicStarterWords(
+                sortedRawPaths,
+                board.GetLength(0),
+                board.GetLength(1),
+                _logger
+            );
+            _cachedPathsAfterProblematicFilter = new List<WordPath>(pathsAfterProblematicFilter);
+            _cachedBoardStringForProblematicFilter = currentBoardString;
+            _logger?.Log($"Problematic starter words filter applied. Count: {pathsAfterProblematicFilter.Count}. Cached.");
+        }
 
-        List<WordPath> generalCandidatePool = SolverPreProcessor.FilterProblematicStarterWords(
-            sortedAllWordPaths,
-            board.GetLength(0),
-            board.GetLength(1),
-            _logger
-        );
-        _logger?.Log($"Pruned general candidate pool count: {generalCandidatePool.Count}");
-
-        var pathsConsideredForKnownWords = Utils.SelectKnownPaths(knownWords, sortedAllWordPaths, _logger);
+        // 3. Apply current user exclusions to the pathsAfterProblematicFilter.
+        List<WordPath> generalCandidatePool; // This will be the final pool for the solver
+        if (wordsToExclude.Any())
+        {
+            var exclusionSet = new HashSet<string>(wordsToExclude.Select(w => w.ToLowerInvariant()));
+            int originalCount = pathsAfterProblematicFilter.Count;
+            generalCandidatePool = pathsAfterProblematicFilter.Where(wp => !exclusionSet.Contains(wp.Word.ToLowerInvariant())).ToList();
+            _logger?.Log($"Filtered out {originalCount - generalCandidatePool.Count} user-excluded words from problematic-filtered list. Final candidate pool count: {generalCandidatePool.Count}");
+        }
+        else
+        {
+            generalCandidatePool = new List<WordPath>(pathsAfterProblematicFilter); // No exclusions, use all
+            _logger?.Log($"No user exclusions. Final candidate pool count: {generalCandidatePool.Count}");
+        }
+        
+        // 4. Prepare inputs for BoardSolver (largely unchanged from here)
+        var pathsConsideredForKnownWords = Utils.SelectKnownPaths(knownWords, generalCandidatePool, _logger);
 
         var usedPositions = new HashSet<(int, int)>();
         var usedEdges = new HashSet<((int, int), (int, int))>();
@@ -137,21 +196,23 @@ internal class SolverEngine
             }
         }
 
-        var allPathsForAmbiguousResolution = sortedAllWordPaths
+        var allPathsForAmbiguousResolution = generalCandidatePool
             .Where(p => ambiguousKnownWordStrings.Contains(p.Word, StringComparer.OrdinalIgnoreCase))
             .ToList();
 
         var wordsInUnambiguousSolution = new HashSet<string>(currentSolutionWithUnambiguousKnowns.Select(p => p.Word), StringComparer.OrdinalIgnoreCase);
 
-        var finalGeneralCandidatePool = generalCandidatePool
+        // finalGeneralCandidatePool is already what we called generalCandidatePool
+        // We need to ensure it doesn't re-include unambiguous knowns unless they are also ambiguous.
+        var finalGeneralCandidatePoolForSolver = generalCandidatePool
             .Where(p => !wordsInUnambiguousSolution.Contains(p.Word) || ambiguousKnownWordStrings.Contains(p.Word, StringComparer.OrdinalIgnoreCase))
             .ToList();
-        _logger?.Log($"Final general candidate pool size for BoardSolver: {finalGeneralCandidatePool.Count}");
+        _logger?.Log($"Final general candidate pool size for BoardSolver (after knowns processing): {finalGeneralCandidatePoolForSolver.Count}");
 
-        var solver = new BoardSolver(_logger);
+        var solver = new BoardSolver(_logger); 
 
         BoardSolver.BoardSolution solution = await solver.SolveAsync(
-            finalGeneralCandidatePool,
+            finalGeneralCandidatePoolForSolver, // Use this refined list
             usedPositions,
             usedEdges,
             currentSolutionWithUnambiguousKnowns,

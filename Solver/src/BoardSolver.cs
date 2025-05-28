@@ -11,7 +11,7 @@ internal class BoardSolver
 {
     private const int TotalCells = 48;
     private readonly ILogger _logger;
-    private readonly HashSet<ulong> _failedStates = new();
+    private HashSet<ulong> _failedStates = new(); // Ensure it's initialized
 
     /// <summary>
     /// Initializes a new instance of the <see cref="BoardSolver"/> class.
@@ -31,6 +31,16 @@ internal class BoardSolver
         public List<WordPath> Words { get; init; } = new();
         public HashSet<(int, int)> UsedPositions { get; set; } = new();
         public HashSet<((int, int), (int, int))> UsedEdges { get; set; } = new();
+    }
+
+    /// <summary>
+    /// Clears the cache of failed states. This should be called when the conditions
+    /// for solving change significantly, such as a new board or modified exclusion lists.
+    /// </summary>
+    public void ClearFailedStatesCache()
+    {
+        _failedStates.Clear();
+        _logger?.Log("BoardSolver: Failed states cache cleared.");
     }
 
     /// <summary>
@@ -82,7 +92,12 @@ internal class BoardSolver
 
         // Memoization: Check if we've been in this state before (positions + remaining ambiguous known words)
         var currentStateKey = GetStateKeyBitmask(currentUsedPositions);
-        if (_failedStates.Contains(currentStateKey) && !ambiguousKnownWordStrings.Any())
+        if (ambiguousKnownWordStrings.Any())
+        {
+            currentStateKey ^= (ulong)string.Join(",", ambiguousKnownWordStrings.OrderBy(s => s)).GetHashCode();
+        }
+
+        if (_failedStates.Contains(currentStateKey))
         {
             return new() { IsSolved = false };
         }
