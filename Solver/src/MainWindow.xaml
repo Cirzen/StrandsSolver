@@ -24,8 +24,10 @@
         <!-- Top Controls: Settings, Debug, Clear, Solve -->
         <Grid Grid.Row="0" Margin="0,0,0,10">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/> <!-- Left-aligned buttons -->
-                <ColumnDefinition Width="Auto"/> <!-- Right-aligned settings button -->
+                <ColumnDefinition Width="*"/>
+                <!-- Left-aligned buttons -->
+                <ColumnDefinition Width="Auto"/>
+                <!-- Right-aligned settings button -->
             </Grid.ColumnDefinitions>
 
             <StackPanel Orientation="Horizontal">
@@ -34,18 +36,32 @@
                 <Button x:Name="SolveButton" Content="Solve" Margin="10,0,0,0" Padding="15,8" Click="SolveButton_Click" FontWeight="Bold" FontSize="18" MinWidth="150" Background="{DynamicResource AccentButtonBackgroundColor}" Foreground="{DynamicResource AccentButtonForegroundColor}"/>
             </StackPanel>
 
-            <Button Grid.Column="1" x:Name="SettingsButton" Content="⚙" Margin="5,0,0,0" Padding="8,5" Click="SettingsButton_Click" 
+            <Button x:Name="SettingsButton" Grid.Column="1" Margin="5,0,0,0" Padding="-9" Click="SettingsButton_Click" 
                     Background="{DynamicResource ButtonBackgroundColor}" Foreground="{DynamicResource ButtonForegroundColor}"
-                    FontFamily="Segoe UI Symbol" FontSize="16" FontWeight="Bold" ToolTip="Settings"/>
+                    FontFamily="Segoe UI Symbol" FontWeight="Bold" ToolTip="Settings"
+                    Width="30" Height="30"> 
+                <Viewbox Stretch="Uniform">
+                    <TextBlock Text="⚙" FontSize="24"> <!-- Base FontSize for the icon -->
+                        <TextBlock.RenderTransform>
+                            <TranslateTransform X="0." Y="-1"/> 
+                        </TextBlock.RenderTransform>
+                    </TextBlock>
+                </Viewbox>
+            </Button>
         </Grid>
 
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto"/> <!-- Board -->
-                <ColumnDefinition Width="5"/>    <!-- Spacer -->
-                <ColumnDefinition Width="*"/>   <!-- Solution List -->
-                <ColumnDefinition Width="5"/>    <!-- Spacer -->
-                <ColumnDefinition Width="2*"/>  <!-- Include/Exclude Lists -->
+                <ColumnDefinition Width="Auto"/>
+                <!-- Board -->
+                <ColumnDefinition Width="5"/>
+                <!-- Spacer -->
+                <ColumnDefinition Width="*"/>
+                <!-- Solution List -->
+                <ColumnDefinition Width="5"/>
+                <!-- Spacer -->
+                <ColumnDefinition Width="2*"/>
+                <!-- Include/Exclude Lists -->
             </Grid.ColumnDefinitions>
 
             <!-- Board Grid and Path Overlay -->
@@ -59,7 +75,7 @@
                     <Canvas x:Name="PathOverlay" Background="Transparent" IsHitTestVisible="False"/>
                 </Grid>
             </Viewbox>
-            
+
             <!-- Solution Words ListBox -->
             <DockPanel Grid.Column="2">
                 <TextBlock DockPanel.Dock="Top" Text="Found Words:" FontWeight="SemiBold" Margin="0,0,0,5" Foreground="{DynamicResource TextForegroundColor}"/>
@@ -135,13 +151,20 @@
             <!-- Included/Excluded Lists -->
             <Grid Grid.Column="4">
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>   <!-- Included Header -->
-                    <RowDefinition Height="*"/>      <!-- Included ListBox -->
-                    <RowDefinition Height="Auto"/>   <!-- Included Add Controls -->
-                    <RowDefinition Height="20"/>     <!-- Spacer -->
-                    <RowDefinition Height="Auto"/>   <!-- Excluded Header -->
-                    <RowDefinition Height="*"/>      <!-- Excluded ListBox -->
-                    <RowDefinition Height="Auto"/>   <!-- Excluded Add Controls -->
+                    <RowDefinition Height="Auto"/>
+                    <!-- Included Header -->
+                    <RowDefinition Height="*"/>
+                    <!-- Included ListBox -->
+                    <RowDefinition Height="Auto"/>
+                    <!-- Included Add Controls -->
+                    <RowDefinition Height="20"/>
+                    <!-- Spacer -->
+                    <RowDefinition Height="Auto"/>
+                    <!-- Excluded Header -->
+                    <RowDefinition Height="*"/>
+                    <!-- Excluded ListBox -->
+                    <RowDefinition Height="Auto"/>
+                    <!-- Excluded Add Controls -->
                 </Grid.RowDefinitions>
 
                 <!-- Included Words -->
