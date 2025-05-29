@@ -47,7 +47,7 @@ Once you have a word list, you can specify its path in the application's setting
     *   The **"Clear"** button will clear the letter grid and the "Found Words" list.
     *   If the board and found words are already clear, a subsequent click will clear the "Included" and "Excluded" word lists.
 
-`[PLACEHOLDER FOR A SCREENSHOT OF THE MAIN APPLICATION WINDOW HERE]`
+![Main Application Window screenshot](./assets/MainWindow.png)
 
 ## How It Works
 
@@ -71,7 +71,7 @@ The application includes a settings panel (accessible via the ⚙️ icon) where
 
 The transparency of solution path lines (when not highlighted) can also be adjusted by editing the `PathOpacityNormal` value (0-255) in the `settings.json` file located in the application's data folder (`%APPDATA%\StrandsSolver\`).
 
-`[PLACEHOLDER FOR A SCREENSHOT OF THE SETTINGS WINDOW HERE]`
+![Settings Window screenshot](./assets/Settings.png)
 
 ## Key Features
 
