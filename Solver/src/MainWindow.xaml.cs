@@ -101,6 +101,13 @@ public partial class MainWindow : Window
         _solverEngine = new(new StatusBarLogger(UpdateStatusBar));
     }
 
+    private string GetDemoBoardsPath()
+    {
+        string appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+        string appFolderPath = System.IO.Path.Combine(appDataPath, Solver.Configuration.ConfigurationService.AppName);
+        return System.IO.Path.Combine(appFolderPath, App.ConfigService.Settings.DemoBoardsFileName);
+    }
+
     private void Window_Loaded(object sender, RoutedEventArgs e)
     {
         LoadDemoBoards();
@@ -126,33 +133,47 @@ public partial class MainWindow : Window
 
     private void LoadDemoBoards()
     {
-        string demoBoardsFilePath = System.IO.Path.Combine(AppContext.BaseDirectory, "Resources", "DemoBoards.txt");
+        string demoBoardsFilePath = GetDemoBoardsPath();
+        _loadedDemoBoards = new List<string>();
+
         try
         {
+            Directory.CreateDirectory(System.IO.Path.GetDirectoryName(demoBoardsFilePath));
+
             if (File.Exists(demoBoardsFilePath))
             {
-                _loadedDemoBoards = File.ReadAllLines(demoBoardsFilePath)
-                                       .Where(line => !string.IsNullOrWhiteSpace(line) && line.Length == 48)
-                                       .Select(line => line.Trim())
-                                       .ToList();
+                var decodedLines = new List<string>();
+                foreach (string line in File.ReadLines(demoBoardsFilePath))
+                {
+                    if (string.IsNullOrWhiteSpace(line)) continue;
+                    string decoded = Utils.DecodeBoardString(line);
+                    if (!string.IsNullOrWhiteSpace(decoded) && decoded.Length == 48)
+                    {
+                        decodedLines.Add(decoded);
+                    }
+                }
+                _loadedDemoBoards = decodedLines;
+
                 if (!_loadedDemoBoards.Any())
                 {
-                    UpdateStatusBar("DemoBoards.txt is empty or contains no valid board strings.", true);
+                    UpdateStatusBar("Demo boards file is empty or contains no valid board strings.", true);
                 }
                 else
                 {
-                    UpdateStatusBar($"Loaded {_loadedDemoBoards.Count} demo boards from DemoBoards.txt.");
+                    _loadedDemoBoards.Reverse();
+                    _debugBoardIndex = 0;
+                    UpdateStatusBar($"Loaded {_loadedDemoBoards.Count} demo boards from {App.ConfigService.Settings.DemoBoardsFileName}.");
                 }
             }
             else
             {
-                UpdateStatusBar("DemoBoards.txt not found. Demo board functionality will be limited.", true);
+                UpdateStatusBar($"Demo boards file not found ({App.ConfigService.Settings.DemoBoardsFileName}). Will be created if new boards are solved.", true);
             }
         }
         catch (Exception ex)
         {
-            UpdateStatusBar($"Error loading DemoBoards.txt: {ex.Message}", true);
-            _loadedDemoBoards = new();
+            UpdateStatusBar($"Error loading demo boards: {ex.Message}", true);
+            _loadedDemoBoards = new List<string>();
         }
     }
 
@@ -202,13 +223,12 @@ public partial class MainWindow : Window
                     }
 
                     string input = e.Text.ToLower();
-                    // Check if the input is a single letter, if not, handle it (e.g., clear or ignore)
                     if (input.Length == 1 && char.IsLetter(input[0]))
                     {
                         textBox.Text = input.ToUpper();
-                        textBox.CaretIndex = 1; // Move caret to the end of the new text.
+                        textBox.CaretIndex = 1;
                     }
-                    e.Handled = true; // Prevent further processing of the input.
+                    e.Handled = true;
 
                     int nextCol = (currentCol + 1) % 6;
                     int nextRow = currentRow + (currentCol + 1) / 6;
@@ -351,7 +371,7 @@ public partial class MainWindow : Window
                     boardIsValid = false;
                     break;
                 }
-                boardStringBuilder.Append(textBox.Text[0]); // Append the uppercase character
+                boardStringBuilder.Append(textBox.Text[0]);
             }
             if (!boardIsValid)
             {
@@ -366,22 +386,34 @@ public partial class MainWindow : Window
 
         string boardStringRaw = boardStringBuilder.ToString().ToLowerInvariant();
 
-        // Add to demo boards if not already present
-        string demoBoardsFilePath = System.IO.Path.Combine(AppContext.BaseDirectory, "Resources", "DemoBoards.txt");
-        if (!_loadedDemoBoards.Contains(boardStringRaw, StringComparer.OrdinalIgnoreCase))
+        string demoBoardsFilePath = GetDemoBoardsPath();
+        
+        List<string> existingEncodedBoards = new List<string>();
+        if (File.Exists(demoBoardsFilePath))
+        {
+            existingEncodedBoards.AddRange(File.ReadAllLines(demoBoardsFilePath));
+        }
+
+        string encodedBoardString = Utils.EncodeBoardString(boardStringRaw);
+
+        bool alreadyExistsPlain = _loadedDemoBoards.Contains(boardStringRaw, StringComparer.OrdinalIgnoreCase);
+        bool alreadyExistsEncoded = existingEncodedBoards.Contains(encodedBoardString, StringComparer.OrdinalIgnoreCase);
+
+        if (!alreadyExistsPlain && !alreadyExistsEncoded)
         {
             _loadedDemoBoards.Add(boardStringRaw);
+            _loadedDemoBoards.Reverse();
+            _debugBoardIndex = 0;
+
             try
             {
-                bool fileExistedAndNotEmpty = File.Exists(demoBoardsFilePath) && new FileInfo(demoBoardsFilePath).Length > 0;
-                string contentToAppend = fileExistedAndNotEmpty ? Environment.NewLine + boardStringRaw : boardStringRaw;
-
-                File.AppendAllText(demoBoardsFilePath, contentToAppend + Environment.NewLine);
-                UpdateStatusBar($"Current board added to DemoBoards.txt. Total: {_loadedDemoBoards.Count}");
+                Directory.CreateDirectory(System.IO.Path.GetDirectoryName(demoBoardsFilePath));
+                File.AppendAllText(demoBoardsFilePath, encodedBoardString + Environment.NewLine);
+                UpdateStatusBar($"Current board added to {App.ConfigService.Settings.DemoBoardsFileName}. Total: {_loadedDemoBoards.Count}");
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Failed to append board to DemoBoards.txt: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Failed to append board to demo boards file: {ex.Message}");
                 UpdateStatusBar($"Error saving board to demo list.", true);
             }
         }
@@ -496,7 +528,7 @@ public partial class MainWindow : Window
             boardWasActuallyCleared = true;
         }
 
-        if (boardWasActuallyCleared) // If any part of the board/solution was cleared
+        if (boardWasActuallyCleared) 
         {
             _solverEngine.ClearPrePruningCache();
         }
@@ -536,7 +568,7 @@ public partial class MainWindow : Window
     private void DebugPopulateButton_Click(object sender, RoutedEventArgs e)
     {
         PopulateBoardWithDebugData();
-        _solverEngine.ClearPrePruningCache(); // Clear cache as board has changed
+        _solverEngine.ClearPrePruningCache();
     }
 
     private void PopulateBoardWithDebugData()
@@ -546,7 +578,7 @@ public partial class MainWindow : Window
 
         if (!_loadedDemoBoards.Any())
         {
-            UpdateStatusBar("No demo boards available. Check DemoBoards.txt.", true);
+            UpdateStatusBar($"No demo boards available. Check {App.ConfigService.Settings.DemoBoardsFileName}.", true);
             return;
         }
 
@@ -600,19 +632,18 @@ public partial class MainWindow : Window
 
             if (isHighlighted)
             {
-                brush = new(Colors.Gold); // Highlighted line is fully opaque gold
+                brush = new(Colors.Gold);
                 strokeThickness = 6;
                 glowEffect = new()
                 {
-                    Color = Colors.Yellow, // Glow effect color
+                    Color = Colors.Yellow,
                     ShadowDepth = 0,
                     BlurRadius = 10,
-                    Opacity = 0.9 // Opacity of the glow effect itself
+                    Opacity = 0.9
                 };
             }
             else
             {
-                // Use configured opacity for normal lines
                 byte lineOpacity = App.ConfigService.Settings.PathOpacityNormal;
                 var color = Color.FromArgb(lineOpacity, (byte)random.Next(100, 200), (byte)random.Next(100, 200), (byte)random.Next(100, 200));
                 brush = new(color);
@@ -670,13 +701,10 @@ public partial class MainWindow : Window
 
         bool themeChanged = App.ConfigService.Settings.SelectedTheme != originalTheme;
 
-        // True if settings were saved
         if (themeChanged)
         {
             ((App)Application.Current).ApplyTheme(App.ConfigService.Settings.SelectedTheme);
-            // Re-apply styles to board TextBoxes as their properties were set programmatically
-            // and might not update automatically from DynamicResource changes triggered at App level.
-            SetBoardEnabled(!_isSolverRunning); // Re-apply based on current solver state
+            SetBoardEnabled(!_isSolverRunning);
         }
         
         UpdateStatusBar("Settings saved. Attempting to reload dictionary...");
@@ -950,19 +978,18 @@ public partial class MainWindow : Window
 
             if (isHighlighted)
             {
-                brush = new(Colors.Gold); // Highlighted line is fully opaque gold
+                brush = new(Colors.Gold);
                 strokeThickness = 6;
                 glowEffect = new()
                 {
-                    Color = Colors.Yellow, // Glow effect color
+                    Color = Colors.Yellow,
                     ShadowDepth = 0,
                     BlurRadius = 10,
-                    Opacity = 0.9 // Opacity of the glow effect itself
+                    Opacity = 0.9
                 };
             }
             else
             {
-                // Use configured opacity for normal lines
                 byte lineOpacity = App.ConfigService.Settings.PathOpacityNormal;
                 var color = Color.FromArgb(lineOpacity, (byte)random.Next(100, 200), (byte)random.Next(100, 200), (byte)random.Next(100, 200));
                 brush = new(color);

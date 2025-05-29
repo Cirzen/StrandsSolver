@@ -29,4 +29,8 @@ public class AppSettings
     /// Value should be between 0 (transparent) and 255 (opaque).
     /// </summary>
     public byte PathOpacityNormal { get; set; } = 180; // Default to ~70% opacity
+    /// <summary>
+    /// Gets or sets the filename for storing demo boards in the APPDATA folder.
+    /// </summary>
+    public string DemoBoardsFileName { get; set; } = "DemoBoards.dat";
 }

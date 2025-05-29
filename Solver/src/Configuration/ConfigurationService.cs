@@ -6,7 +6,7 @@ namespace Solver.Configuration;
 
 public class ConfigurationService
 {
-    private static readonly string AppName = "StrandsSolver";
+    public static readonly string AppName = "StrandsSolver";
     private static readonly string ConfigFileName = "settings.json";
     private string ConfigFilePath { get; }
 
@@ -65,7 +65,8 @@ public class ConfigurationService
             ProgressUpdateIntervalMilliseconds = 500,
             DoubleClickBehavior = SolutionDoubleClickAction.AddToExcluded,
             SelectedTheme = AppTheme.Light,
-            PathOpacityNormal = 180 // 0-255
+            PathOpacityNormal = 180, // 0-255
+            DemoBoardsFileName = "DemoBoards.dat"
         };
     }
 }
