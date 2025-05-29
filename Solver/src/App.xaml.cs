@@ -27,8 +27,10 @@ public partial class App : Application
         }
 
         // Load new theme dictionary
-        string themeFile = theme == AppTheme.Dark ? "src/Resources/DarkTheme.xaml" : "src/Resources/LightTheme.xaml";
-        var newThemeDictionary = new ResourceDictionary { Source = new Uri(themeFile, UriKind.Relative) };
+        string themeFile = theme == AppTheme.Dark 
+            ? "pack://application:,,,/Resources/DarkTheme.xaml" 
+            : "pack://application:,,,/Resources/LightTheme.xaml";
+        var newThemeDictionary = new ResourceDictionary { Source = new Uri(themeFile, UriKind.Absolute) };
         Resources.MergedDictionaries.Add(newThemeDictionary);
 
         ConfigService.Settings.SelectedTheme = theme; // Ensure the setting is updated if called externally
