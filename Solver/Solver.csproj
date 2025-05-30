@@ -15,6 +15,11 @@
     </ItemGroup>
 
     <ItemGroup>
+      <Page Remove="src\Resources\DarkTheme.xaml" />
+      <Page Remove="src\Resources\LightTheme.xaml" />
+    </ItemGroup>
+
+    <ItemGroup>
       <ApplicationDefinition Include="src\App.xaml">
         <Generator>MSBuild:Compile</Generator>
         <XamlRuntime>Wpf</XamlRuntime>
@@ -24,6 +29,11 @@
 
     <ItemGroup>
       <Content Include="Resources\DemoBoards.txt" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Resource Include="src\Resources\DarkTheme.xaml" />
+      <Resource Include="src\Resources\LightTheme.xaml" />
     </ItemGroup>
 
     <ItemGroup>
