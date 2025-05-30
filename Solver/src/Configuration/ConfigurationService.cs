@@ -1,6 +1,7 @@
 using System.IO;
 using System.Text.Json;
 using System.Windows;
+using System.Collections.Generic;
 
 namespace Solver.Configuration;
 
@@ -66,7 +67,11 @@ public class ConfigurationService
             DoubleClickBehavior = SolutionDoubleClickAction.AddToExcluded,
             SelectedTheme = AppTheme.Light,
             PathOpacityNormal = 180, // 0-255
-            DemoBoardsFileName = "DemoBoards.dat"
+            DemoBoardsFileName = "DemoBoards.dat",
+            DefaultDemoBoards = new List<string> 
+            {
+                "ralmocornetrvedroateecmnpakerosdcboousimantthtre" 
+            }
         };
     }
 }

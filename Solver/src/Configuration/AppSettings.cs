@@ -33,4 +33,9 @@ public class AppSettings
     /// Gets or sets the filename for storing demo boards in the APPDATA folder.
     /// </summary>
     public string DemoBoardsFileName { get; set; } = "DemoBoards.dat";
+    /// <summary>
+    /// Gets or sets a list of predefined demo boards to be used if the user's demo boards file doesn't exist.
+    /// These are stored in plain text.
+    /// </summary>
+    public IEnumerable<string> DefaultDemoBoards { get; set; } = [];
 }

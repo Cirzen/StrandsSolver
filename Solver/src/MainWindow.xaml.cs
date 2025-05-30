@@ -11,6 +11,8 @@ using System.Windows.Threading;
 using System.Windows.Media.Effects; // Required for DropShadowEffect
 using System.Collections.Specialized; // Required for CollectionChanged
 
+using Path = System.IO.Path;
+
 namespace Solver;
 
 public partial class MainWindow : Window
@@ -25,6 +27,8 @@ public partial class MainWindow : Window
     private WordPath? _currentlyHighlightedPath;
 
     private readonly ProgressTracker _progressTracker;
+    private readonly ILogger _appLogger; // Single logger for the application
+
     private ObservableCollection<string> UserExcludedWords { get; set; } = new();
     private ObservableCollection<string> UserIncludedWords { get; set; } = new();
     private ObservableCollection<DisplayableSolutionWord> DisplayableSolutionWords { get; set; } = new();
@@ -98,14 +102,32 @@ public partial class MainWindow : Window
         }
 
         _progressTracker = new(ReportProgressAction);
-        _solverEngine = new(new StatusBarLogger(UpdateStatusBar));
+
+#if DEBUG
+        string appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+        string appFolderPath = Path.Combine(appDataPath, ConfigurationService.AppName);
+        Directory.CreateDirectory(appFolderPath);
+        
+        string appLogFilePath = Path.Combine(appFolderPath, "app_debug.log"); // Single log file
+        Logger loggerForDebug = new Logger();
+        loggerForDebug.AddLogger(new StatusBarLogger(UpdateStatusBar));
+        loggerForDebug.AddLogger(new FileLogger(appLogFilePath));
+        _appLogger = loggerForDebug;
+        _solverEngine = new(_appLogger); // Pass the same logger to SolverEngine
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] Application logging to: {appLogFilePath}");
+#else
+        Logger loggerForRelease = new Logger();
+        loggerForRelease.AddLogger(new StatusBarLogger(UpdateStatusBar));
+        _appLogger = loggerForRelease;
+        _solverEngine = new(_appLogger); // Pass the same logger to SolverEngine
+#endif
     }
 
     private string GetDemoBoardsPath()
     {
         string appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-        string appFolderPath = System.IO.Path.Combine(appDataPath, Solver.Configuration.ConfigurationService.AppName);
-        return System.IO.Path.Combine(appFolderPath, App.ConfigService.Settings.DemoBoardsFileName);
+        string appFolderPath = Path.Combine(appDataPath, ConfigurationService.AppName);
+        return Path.Combine(appFolderPath, App.ConfigService.Settings.DemoBoardsFileName);
     }
 
     private void Window_Loaded(object sender, RoutedEventArgs e)
@@ -115,19 +137,19 @@ public partial class MainWindow : Window
         try
         {
             _solverEngine.InitializeTrie();
-            UpdateStatusBar("Dictionary loaded successfully.");
+            _appLogger.Log("Dictionary loaded successfully.");
         }
         catch (FileNotFoundException fnfEx)
         {
-            UpdateStatusBar($"Dictionary file not found: {fnfEx.Message}. Please configure the path in Settings.", true);
+            _appLogger.LogError($"Dictionary file not found: {fnfEx.Message}. Please configure the path in Settings.");
         }
         catch (InvalidOperationException ioEx)
         {
-            UpdateStatusBar($"Dictionary path not configured: {ioEx.Message}. Please configure the path in Settings.", true);
+            _appLogger.LogError($"Dictionary path not configured: {ioEx.Message}. Please configure the path in Settings.");
         }
         catch (Exception ex)
         {
-            UpdateStatusBar($"Failed to load dictionary: {ex.Message}", true);
+            _appLogger.LogError($"Failed to load dictionary: {ex.Message}");
         }
     }
 
@@ -138,41 +160,53 @@ public partial class MainWindow : Window
 
         try
         {
-            Directory.CreateDirectory(System.IO.Path.GetDirectoryName(demoBoardsFilePath));
+            Directory.CreateDirectory(Path.GetDirectoryName(demoBoardsFilePath));
+
+            if (!File.Exists(demoBoardsFilePath))
+            {
+                var defaultBoards = App.ConfigService.Settings.DefaultDemoBoards;
+                if (defaultBoards != null && defaultBoards.Any())
+                {
+                    File.WriteAllLines(demoBoardsFilePath, defaultBoards.Where(b => !string.IsNullOrWhiteSpace(b) && b.Length == 48));
+                    _appLogger.Log($"Created demo boards file with {defaultBoards.Count(b => !string.IsNullOrWhiteSpace(b) && b.Length == 48)} default boards.");
+                }
+                else
+                {
+                    File.WriteAllText(demoBoardsFilePath, string.Empty);
+                    _appLogger.Log($"Created empty demo boards file: {App.ConfigService.Settings.DemoBoardsFileName}.");
+                }
+            }
 
             if (File.Exists(demoBoardsFilePath))
             {
-                var decodedLines = new List<string>();
-                foreach (string line in File.ReadLines(demoBoardsFilePath))
+                _appLogger.Log($"Loading demo boards from {demoBoardsFilePath}");
+                var fileContent = File.ReadAllLines(demoBoardsFilePath);
+
+                foreach (var line in fileContent)
                 {
-                    if (string.IsNullOrWhiteSpace(line)) continue;
-                    string decoded = Utils.DecodeBoardString(line);
-                    if (!string.IsNullOrWhiteSpace(decoded) && decoded.Length == 48)
-                    {
-                        decodedLines.Add(decoded);
-                    }
+                    _appLogger.Log($"Demo board string {line} length: {line.Length}");
                 }
-                _loadedDemoBoards = decodedLines;
+                
+                _loadedDemoBoards = fileContent
+                                       .Where(line => !string.IsNullOrWhiteSpace(line) && line.Length == 48)
+                                       .Select(line => line.Trim().ToLowerInvariant())
+                                       .ToList();
 
                 if (!_loadedDemoBoards.Any())
                 {
-                    UpdateStatusBar("Demo boards file is empty or contains no valid board strings.", true);
+                    _appLogger.Log($"Demo boards file ({App.ConfigService.Settings.DemoBoardsFileName}) is empty or contains no valid board strings.");
                 }
                 else
                 {
                     _loadedDemoBoards.Reverse();
                     _debugBoardIndex = 0;
-                    UpdateStatusBar($"Loaded {_loadedDemoBoards.Count} demo boards from {App.ConfigService.Settings.DemoBoardsFileName}.");
+                    _appLogger.Log($"Loaded {_loadedDemoBoards.Count} demo boards from {App.ConfigService.Settings.DemoBoardsFileName}.");
                 }
-            }
-            else
-            {
-                UpdateStatusBar($"Demo boards file not found ({App.ConfigService.Settings.DemoBoardsFileName}). Will be created if new boards are solved.", true);
             }
         }
         catch (Exception ex)
         {
-            UpdateStatusBar($"Error loading demo boards: {ex.Message}", true);
+            _appLogger.LogError($"Error accessing demo boards file: {ex.Message}");
             _loadedDemoBoards = new List<string>();
         }
     }
@@ -213,7 +247,6 @@ public partial class MainWindow : Window
                     BorderBrush = (SolidColorBrush)Application.Current.Resources["BorderColorBrush"]
                 };
 
-                // Display uppercase but store lowercase
                 tb.PreviewTextInput += (sender, e) =>
                 {
                     var textBox = sender as TextBox;
@@ -248,7 +281,6 @@ public partial class MainWindow : Window
                     }
                 };
 
-                // Handle Backspace, Delete and Arrow keys
                 tb.PreviewKeyDown += (sender, e) =>
                 {
                     var textBox = sender as TextBox;
@@ -259,7 +291,6 @@ public partial class MainWindow : Window
 
                     switch (e.Key)
                     {
-                        // Handle Backspace
                         case Key.Back when textBox.CaretIndex == 0:
                         {
                             int prevCol = (currentCol - 1 + 6) % 6;
@@ -277,13 +308,11 @@ public partial class MainWindow : Window
                             e.Handled = true;
                             break;
                         case Key.Delete:
-                            // Handle Delete
                             textBox.Clear();
                             e.Handled = true;
                             break;
                         case Key.Right:
                         {
-                            // Handle Right Arrow
                             int nextCol = (currentCol + 1) % 6;
                             int nextRow = currentRow + (currentCol + 1) / 6;
 
@@ -294,7 +323,6 @@ public partial class MainWindow : Window
                             e.Handled = true;
                             break;
                         }
-                        // Handle Left Arrow
                         case Key.Left when !string.IsNullOrEmpty(textBox.Text) && textBox.CaretIndex == textBox.Text.Length:
                             textBox.CaretIndex = 0;
                             e.Handled = true;
@@ -313,7 +341,6 @@ public partial class MainWindow : Window
                         }
                         case Key.Up:
                         {
-                            // Handle Up Arrow
                             int prevRow = currentRow - 1;
 
                             if (prevRow >= 0)
@@ -325,7 +352,6 @@ public partial class MainWindow : Window
                         }
                         case Key.Down:
                         {
-                            // Handle Down Arrow
                             int nextRow = currentRow + 1;
 
                             if (nextRow < 8)
@@ -336,7 +362,6 @@ public partial class MainWindow : Window
                             break;
                         }
                         default:
-                            // Ignore other keys
                             break;    
                     }
                 };
@@ -367,7 +392,7 @@ public partial class MainWindow : Window
                 var textBox = _boardTextBoxes[row, column];
                 if (textBox is null || string.IsNullOrWhiteSpace(textBox.Text) || !char.IsLetter(textBox.Text[0]))
                 {
-                    UpdateStatusBar("Validation failed: All cells must be filled with a single letter (A-Z).");
+                    _appLogger.Log("Validation failed: All cells must be filled with a single letter (A-Z).");
                     boardIsValid = false;
                     break;
                 }
@@ -388,33 +413,23 @@ public partial class MainWindow : Window
 
         string demoBoardsFilePath = GetDemoBoardsPath();
         
-        List<string> existingEncodedBoards = new List<string>();
-        if (File.Exists(demoBoardsFilePath))
+        bool alreadyExists = _loadedDemoBoards.Contains(boardStringRaw, StringComparer.OrdinalIgnoreCase);
+
+        if (!alreadyExists)
         {
-            existingEncodedBoards.AddRange(File.ReadAllLines(demoBoardsFilePath));
-        }
-
-        string encodedBoardString = Utils.EncodeBoardString(boardStringRaw);
-
-        bool alreadyExistsPlain = _loadedDemoBoards.Contains(boardStringRaw, StringComparer.OrdinalIgnoreCase);
-        bool alreadyExistsEncoded = existingEncodedBoards.Contains(encodedBoardString, StringComparer.OrdinalIgnoreCase);
-
-        if (!alreadyExistsPlain && !alreadyExistsEncoded)
-        {
-            _loadedDemoBoards.Add(boardStringRaw);
-            _loadedDemoBoards.Reverse();
-            _debugBoardIndex = 0;
-
             try
             {
-                Directory.CreateDirectory(System.IO.Path.GetDirectoryName(demoBoardsFilePath));
-                File.AppendAllText(demoBoardsFilePath, encodedBoardString + Environment.NewLine);
-                UpdateStatusBar($"Current board added to {App.ConfigService.Settings.DemoBoardsFileName}. Total: {_loadedDemoBoards.Count}");
+                Directory.CreateDirectory(Path.GetDirectoryName(demoBoardsFilePath));
+                File.AppendAllText(demoBoardsFilePath, boardStringRaw + Environment.NewLine);
+                _loadedDemoBoards.Insert(0, boardStringRaw);
+                _debugBoardIndex = 0;
+
+                _appLogger.Log($"Current board added to {App.ConfigService.Settings.DemoBoardsFileName}. Total: {_loadedDemoBoards.Count}");
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Failed to append board to demo boards file: {ex.Message}");
-                UpdateStatusBar($"Error saving board to demo list.", true);
+                _appLogger.LogError($"Error saving board to demo list.");
             }
         }
 
@@ -437,13 +452,13 @@ public partial class MainWindow : Window
                 {
                     DisplayableSolutionWords.Clear();
                     PathOverlay.Children.Clear();
-                    UpdateStatusBar("Working... Please wait...");
+                    _appLogger.Log("Working... Please wait...");
                 });
                 await _solverEngine.ExecuteAsync(board, knownWords, _progressTracker, UserExcludedWords.ToList());
             }
             catch (Exception ex)
             {
-                _ = Dispatcher.InvokeAsync(() => UpdateStatusBar($"An error occurred: {ex.Message}", isError: true));
+                _ = Dispatcher.InvokeAsync(() => _appLogger.LogError($"An error occurred: {ex.Message}"));
             }
             finally
             {
@@ -481,7 +496,7 @@ public partial class MainWindow : Window
         SolveButton.Content = "Solve";
         _isSolverRunning = false;
 
-        UpdateStatusBar("Solver aborted.");
+        _appLogger.Log("Solver aborted.");
     }
 
     internal void UpdateStatusBar(string message, bool isError = false)
@@ -535,7 +550,7 @@ public partial class MainWindow : Window
 
         if (boardWasActuallyCleared || !_isBoardAlreadyClear)
         {
-            UpdateStatusBar("Board and solution display cleared. Click Clear again to clear Include/Exclude lists.");
+            _appLogger.Log("Board and solution display cleared. Click Clear again to clear Include/Exclude lists.");
             _isBoardAlreadyClear = true;
         }
         else
@@ -558,7 +573,7 @@ public partial class MainWindow : Window
                 listsWereCleared = true;
             }
 
-            UpdateStatusBar(listsWereCleared
+            _appLogger.Log(listsWereCleared
                 ? "Include/Exclude lists cleared."
                 : "Board and Include/Exclude lists are already empty.");
             _isBoardAlreadyClear = false;
@@ -578,7 +593,7 @@ public partial class MainWindow : Window
 
         if (!_loadedDemoBoards.Any())
         {
-            UpdateStatusBar($"No demo boards available. Check {App.ConfigService.Settings.DemoBoardsFileName}.", true);
+            _appLogger.Log($"No demo boards available. Check {App.ConfigService.Settings.DemoBoardsFileName}.");
             return;
         }
 
@@ -587,7 +602,7 @@ public partial class MainWindow : Window
 
         if (currentDebugBoardString.Length != rows * cols)
         {
-            UpdateStatusBar($"Demo board string '{currentDebugBoardString}' has incorrect length. Expected {rows * cols}, got {currentDebugBoardString.Length}.", true);
+            _appLogger.LogError($"Demo board string '{currentDebugBoardString}' has incorrect length. Expected {rows * cols}, got {currentDebugBoardString.Length}.");
             return;
         }
 
@@ -610,7 +625,7 @@ public partial class MainWindow : Window
 
         _isBoardAlreadyClear = false;
 
-        UpdateStatusBar($"Populated with demo board: #{_debugBoardIndex}. Included/Excluded lists cleared.");
+        _appLogger.Log($"Populated with demo board: #{_debugBoardIndex}. Included/Excluded lists cleared.");
     }
 
     private void DrawPaths(List<WordPath> paths)
@@ -707,23 +722,23 @@ public partial class MainWindow : Window
             SetBoardEnabled(!_isSolverRunning);
         }
         
-        UpdateStatusBar("Settings saved. Attempting to reload dictionary...");
+        _appLogger.Log("Settings saved. Attempting to reload dictionary...");
         try
         {
             _solverEngine.InitializeTrie();
-            UpdateStatusBar("Dictionary reloaded successfully with new settings.");
+            _appLogger.Log("Dictionary reloaded successfully with new settings.");
         }
         catch (FileNotFoundException fnfEx)
         {
-            UpdateStatusBar($"Failed to reload dictionary: {fnfEx.Message}. Please check the path in settings.", true);
+            _appLogger.LogError($"Failed to reload dictionary: {fnfEx.Message}. Please check the path in settings.");
         }
         catch (InvalidOperationException ioEx)
         {
-            UpdateStatusBar($"Failed to reload dictionary: {ioEx.Message}. Please configure the path in settings.", true);
+            _appLogger.LogError($"Failed to reload dictionary: {ioEx.Message}. Please configure the path in settings.");
         }
         catch (Exception ex)
         {
-            UpdateStatusBar($"An error occurred while reloading the dictionary: {ex.Message}", true);
+            _appLogger.LogError($"An error occurred while reloading the dictionary: {ex.Message}");
         }
     }
 
@@ -740,11 +755,11 @@ public partial class MainWindow : Window
                 {
                     UserExcludedWords.Add(selectedWord);
                     UserIncludedWords.Remove(selectedWord);
-                    UpdateStatusBar($"'{selectedWord}' added to excluded words list (double-click).");
+                    _appLogger.Log($"'{selectedWord}' added to excluded words list (double-click).");
                 }
                 else
                 {
-                    UpdateStatusBar($"'{selectedWord}' is already in the excluded words list.");
+                    _appLogger.Log($"'{selectedWord}' is already in the excluded words list.");
                 }
             }
             else
@@ -753,11 +768,11 @@ public partial class MainWindow : Window
                 {
                     UserIncludedWords.Add(selectedWord);
                     UserExcludedWords.Remove(selectedWord);
-                    UpdateStatusBar($"'{selectedWord}' added to included words list (double-click).");
+                    _appLogger.Log($"'{selectedWord}' added to included words list (double-click).");
                 }
                 else
                 {
-                    UpdateStatusBar($"'{selectedWord}' is already in the included words list.");
+                    _appLogger.Log($"'{selectedWord}' is already in the included words list.");
                 }
             }
         }
@@ -772,11 +787,11 @@ public partial class MainWindow : Window
                 {
                     UserExcludedWords.Add(selectedWord);
                     UserIncludedWords.Remove(selectedWord);
-                    UpdateStatusBar($"'{selectedWord}' added to excluded words list (double-click).");
+                    _appLogger.Log($"'{selectedWord}' added to excluded words list (double-click).");
                 }
                 else
                 {
-                    UpdateStatusBar($"'{selectedWord}' is already in the excluded words list.");
+                    _appLogger.Log($"'{selectedWord}' is already in the excluded words list.");
                 }
             }
             else
@@ -785,11 +800,11 @@ public partial class MainWindow : Window
                 {
                     UserIncludedWords.Add(selectedWord);
                     UserExcludedWords.Remove(selectedWord);
-                    UpdateStatusBar($"'{selectedWord}' added to included words list (double-click).");
+                    _appLogger.Log($"'{selectedWord}' added to included words list (double-click).");
                 }
                 else
                 {
-                    UpdateStatusBar($"'{selectedWord}' is already in the included words list.");
+                    _appLogger.Log($"'{selectedWord}' is already in the included words list.");
                 }
             }
         }
@@ -807,11 +822,11 @@ public partial class MainWindow : Window
         {
             UserIncludedWords.Add(word);
             UserExcludedWords.Remove(word);
-            UpdateStatusBar($"'{word}' added to included words list.");
+            _appLogger.Log($"'{word}' added to included words list.");
         }
         else
         {
-            UpdateStatusBar($"'{word}' is already in the included words list.");
+            _appLogger.Log($"'{word}' is already in the included words list.");
         }
     }
 
@@ -827,11 +842,11 @@ public partial class MainWindow : Window
         {
             UserExcludedWords.Add(word);
             UserIncludedWords.Remove(word);
-            UpdateStatusBar($"'{word}' added to excluded words list.");
+            _appLogger.Log($"'{word}' added to excluded words list.");
         }
         else
         {
-            UpdateStatusBar($"'{word}' is already in the excluded words list.");
+            _appLogger.Log($"'{word}' is already in the excluded words list.");
         }
     }
 
@@ -840,11 +855,11 @@ public partial class MainWindow : Window
         if (UserExcludedWords.Any())
         {
             UserExcludedWords.Clear();
-            UpdateStatusBar("Excluded words list cleared.");
+            _appLogger.Log("Excluded words list cleared.");
         }
         else
         {
-            UpdateStatusBar("Excluded words list is already empty.");
+            _appLogger.Log("Excluded words list is already empty.");
         }
     }
 
@@ -854,7 +869,7 @@ public partial class MainWindow : Window
         {
             if (UserExcludedWords.Remove(selectedWordToRemove))
             {
-                UpdateStatusBar($"'{selectedWordToRemove}' removed from excluded words list.");
+                _appLogger.Log($"'{selectedWordToRemove}' removed from excluded words list.");
             }
         }
     }
@@ -864,7 +879,7 @@ public partial class MainWindow : Window
         string wordToAdd = NewIncludedWordTextBox.Text.Trim().ToLowerInvariant();
         if (string.IsNullOrWhiteSpace(wordToAdd))
         {
-            UpdateStatusBar("Please enter a word to include.");
+            _appLogger.Log("Please enter a word to include.");
             NewIncludedWordTextBox.Focus();
             return;
         }
@@ -873,12 +888,12 @@ public partial class MainWindow : Window
         {
             UserIncludedWords.Add(wordToAdd);
             UserExcludedWords.Remove(wordToAdd);
-            UpdateStatusBar($"'{wordToAdd}' added to included words list.");
+            _appLogger.Log($"'{wordToAdd}' added to included words list.");
             NewIncludedWordTextBox.Clear();
         }
         else
         {
-            UpdateStatusBar($"'{wordToAdd}' is already in the included words list.");
+            _appLogger.Log($"'{wordToAdd}' is already in the included words list.");
         }
         NewIncludedWordTextBox.Focus();
     }
@@ -888,7 +903,7 @@ public partial class MainWindow : Window
         string wordToAdd = NewExcludedWordTextBox.Text.Trim().ToLowerInvariant();
         if (string.IsNullOrWhiteSpace(wordToAdd))
         {
-            UpdateStatusBar("Please enter a word to exclude.");
+            _appLogger.Log("Please enter a word to exclude.");
             NewExcludedWordTextBox.Focus();
             return;
         }
@@ -897,12 +912,12 @@ public partial class MainWindow : Window
         {
             UserExcludedWords.Add(wordToAdd);
             UserIncludedWords.Remove(wordToAdd);
-            UpdateStatusBar($"'{wordToAdd}' added to excluded words list.");
+            _appLogger.Log($"'{wordToAdd}' added to excluded words list.");
             NewExcludedWordTextBox.Clear();
         }
         else
         {
-            UpdateStatusBar($"'{wordToAdd}' is already in the excluded words list.");
+            _appLogger.Log($"'{wordToAdd}' is already in the excluded words list.");
         }
         NewExcludedWordTextBox.Focus();
     }
@@ -913,7 +928,7 @@ public partial class MainWindow : Window
         {
             if (UserIncludedWords.Remove(selectedWordToRemove))
             {
-                UpdateStatusBar($"'{selectedWordToRemove}' removed from included words list.");
+                _appLogger.Log($"'{selectedWordToRemove}' removed from included words list.");
             }
         }
     }
@@ -923,11 +938,11 @@ public partial class MainWindow : Window
         if (UserIncludedWords.Any())
         {
             UserIncludedWords.Clear();
-            UpdateStatusBar("Included words list cleared.");
+            _appLogger.Log("Included words list cleared.");
         }
         else
         {
-            UpdateStatusBar("Included words list is already empty.");
+            _appLogger.Log("Included words list is already empty.");
         }
     }
 

@@ -94,49 +94,4 @@ public class Utils
         }
         return builder.ToString();
     }
-
-    public static string ApplyRot13(string input)
-    {
-        if (input == null) return string.Empty;
-        StringBuilder result = new();
-        foreach (char c in input)
-        {
-            if (c >= 'a' && c <= 'z')
-            {
-                result.Append((char)(((c - 'a' + 13) % 26) + 'a'));
-            }
-            else if (c >= 'A' && c <= 'Z')
-            {
-                result.Append((char)(((c - 'A' + 13) % 26) + 'A'));
-            }
-            else
-            {
-                result.Append(c);
-            }
-        }
-        return result.ToString();
-    }
-
-    public static string EncodeBoardString(string plainText)
-    {
-        if (string.IsNullOrEmpty(plainText)) return string.Empty;
-        string rot13 = ApplyRot13(plainText);
-        byte[] bytes = Encoding.UTF8.GetBytes(rot13);
-        return Convert.ToBase64String(bytes);
-    }
-
-    public static string DecodeBoardString(string encodedText)
-    {
-        if (string.IsNullOrEmpty(encodedText)) return string.Empty;
-        try
-        {
-            byte[] bytes = Convert.FromBase64String(encodedText);
-            string rot13 = Encoding.UTF8.GetString(bytes);
-            return ApplyRot13(rot13);
-        }
-        catch (FormatException)
-        {
-            return string.Empty;
-        }
-    }
 }
