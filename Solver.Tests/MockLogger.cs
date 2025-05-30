@@ -1,4 +1,5 @@
-﻿namespace Solver.Tests;
+﻿using Solver;
+namespace Solver.Tests;
 
 public class MockLogger : ILogger
 {
