@@ -5,11 +5,10 @@ namespace Solver;
 /// </summary>
 internal class BoardSolver
 {
-    private const int TotalCells = 48; // Assuming an 8x6 board
+    private const int TotalCells = 48;
     private readonly ILogger _logger;
     private HashSet<ulong> _failedStates = new();
 
-    // --- Public Methods ---
     public BoardSolver(ILogger logger)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -50,7 +49,10 @@ internal class BoardSolver
         }
 
         await HandleProgressReportingAsync(progressTracker, currentSolutionSoFar, cancellationToken);
-        if (cancellationToken.IsCancellationRequested) return new() { IsSolved = false };
+        if (cancellationToken.IsCancellationRequested)
+        {
+            return new() { IsSolved = false };
+        }
 
         BoardSolution solution;
         if (ambiguousKnownWordStrings.Any())
@@ -79,7 +81,6 @@ internal class BoardSolver
         return solution;
     }
 
-    // --- Internal Methods ---
     internal List<WordPath> GetRankedCandidateWordsForNextStep(
         List<WordPath> allPossibleWordsOnBoard,
         HashSet<(int, int)> currentUsedPositions,
@@ -104,7 +105,10 @@ internal class BoardSolver
                 .ToList();
 
             if (candidateRegionWords.Count == 0) return new();
-            if (!smallestRegion.All(p => candidateRegionWords.SelectMany(wp => wp.Positions).Distinct().Contains(p))) return new();
+            if (!smallestRegion.All(p => candidateRegionWords.SelectMany(wp => wp.Positions)
+                    .Distinct()
+                    .Contains(p)))
+                return new();
 
             var positionFrequencyInRegionCandidates = candidateRegionWords
                 .SelectMany(w => w.Positions)
@@ -152,16 +156,16 @@ internal class BoardSolver
                         var (currR, currC) = q.Dequeue();
                         region.Add((currR, currC));
                         for (int ro = -1; ro <= 1; ro++) for (int co = -1; co <= 1; co++)
+                        {
+                            if (ro == 0 && co == 0) continue;
+                            int nr = currR + ro, nc = currC + co;
+                            if (nr >= 0 && nr < totalRows && nc >= 0 && nc < totalColumns &&
+                                !usedPositions.Contains((nr, nc)) && !visited[nr, nc])
                             {
-                                if (ro == 0 && co == 0) continue;
-                                int nr = currR + ro, nc = currC + co;
-                                if (nr >= 0 && nr < totalRows && nc >= 0 && nc < totalColumns &&
-                                    !usedPositions.Contains((nr, nc)) && !visited[nr, nc])
-                                {
-                                    q.Enqueue((nr, nc));
-                                    visited[nr, nc] = true;
-                                }
+                                q.Enqueue((nr, nc));
+                                visited[nr, nc] = true;
                             }
+                        }
                     }
                     if (region.Any()) regions.Add(region);
                 }
@@ -170,7 +174,6 @@ internal class BoardSolver
         return regions;
     }
 
-    // --- Private Helper Methods ---
     private ulong GetStateKeyBitmask(HashSet<(int, int)> usedPositions, List<string> ambiguousKnownWordStrings)
     {
         ulong key = 0;
@@ -229,16 +232,31 @@ internal class BoardSolver
             if (!IsValidWordPlacement(pathOption, currentUsedPositions, currentUsedEdges)) continue;
 
             currentSolutionSoFar.Add(pathOption);
-            foreach (var pos in pathOption.Positions) currentUsedPositions.Add(pos);
-            foreach (var edge in pathOption.Edges) currentUsedEdges.Add(edge);
+            foreach (var pos in pathOption.Positions)
+            {
+                currentUsedPositions.Add(pos);
+            }
+
+            foreach (var edge in pathOption.Edges)
+            {
+                currentUsedEdges.Add(edge);
+            }
 
             var result = await SolveAsync(allCandidatePathsOnBoard, currentUsedPositions, currentUsedEdges,
                                           currentSolutionSoFar, cancellationToken, progressTracker,
                                           remainingAmbiguousStrings, allPathsForAmbiguousKnownWords);
             if (result.IsSolved) return result;
 
-            foreach (var edge in pathOption.Edges) currentUsedEdges.Remove(edge);
-            foreach (var pos in pathOption.Positions) currentUsedPositions.Remove(pos);
+            foreach (var edge in pathOption.Edges)
+            {
+                currentUsedEdges.Remove(edge);
+            }
+
+            foreach (var pos in pathOption.Positions)
+            {
+                currentUsedPositions.Remove(pos);
+            }
+
             currentSolutionSoFar.RemoveAt(currentSolutionSoFar.Count - 1);
         }
         return new() { IsSolved = false };
@@ -261,6 +279,7 @@ internal class BoardSolver
         }
 
         var wordsInCurrentSolutionSet = currentSolutionSoFar.Select(wp => wp.Word.ToLowerInvariant()).ToHashSet();
+        // Order the words for the next step, prioritizing those that fit best in the current unused regions.
         var rankedGeneralCandidates = GetRankedCandidateWordsForNextStep(
             allCandidatePathsOnBoard, currentUsedPositions, currentUsedEdges, progressTracker, wordsInCurrentSolutionSet);
 
@@ -276,14 +295,16 @@ internal class BoardSolver
             progressTracker.IncrementWordsAttempted();
             if (cancellationToken.IsCancellationRequested) return new() { IsSolved = false };
 
-            // IsValidWordPlacement is implicitly handled by GetRankedCandidateWordsForNextStep's filtering,
-            // but an explicit check here before modifying collections is a defensive measure.
-            // However, GetRankedCandidateWordsForNextStep already calls IsValidWordPlacement.
-            // So, we can trust its output.
-
             currentSolutionSoFar.Add(wordToTry);
-            foreach (var pos in wordToTry.Positions) currentUsedPositions.Add(pos);
-            foreach (var edge in wordToTry.Edges) currentUsedEdges.Add(edge);
+            foreach (var pos in wordToTry.Positions)
+            {
+                currentUsedPositions.Add(pos);
+            }
+
+            foreach (var edge in wordToTry.Edges)
+            {
+                currentUsedEdges.Add(edge);
+            }
 
             var result = await SolveAsync(allCandidatePathsOnBoard, currentUsedPositions, currentUsedEdges,
                                           currentSolutionSoFar, cancellationToken, progressTracker,
@@ -291,8 +312,16 @@ internal class BoardSolver
                                           allPathsForAmbiguousKnownWords); 
             if (result.IsSolved) return result;
 
-            foreach (var edge in wordToTry.Edges) currentUsedEdges.Remove(edge);
-            foreach (var pos in wordToTry.Positions) currentUsedPositions.Remove(pos);
+            foreach (var edge in wordToTry.Edges)
+            {
+                currentUsedEdges.Remove(edge);
+            }
+
+            foreach (var pos in wordToTry.Positions)
+            {
+                currentUsedPositions.Remove(pos);
+            }
+
             currentSolutionSoFar.RemoveAt(currentSolutionSoFar.Count - 1);
         }
         return new() { IsSolved = false };

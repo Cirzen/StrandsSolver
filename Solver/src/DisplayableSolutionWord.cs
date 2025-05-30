@@ -3,6 +3,9 @@ using System.Runtime.CompilerServices;
 
 namespace Solver
 {
+    /// <summary>
+    /// Represents a word in the solution that can be displayed in the UI.
+    /// </summary>
     public sealed class DisplayableSolutionWord : INotifyPropertyChanged
     {
         public string Word => FullPathData?.Word ?? string.Empty;

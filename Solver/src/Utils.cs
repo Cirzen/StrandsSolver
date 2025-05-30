@@ -81,6 +81,11 @@ public class Utils
         return pathsMatchingKnownWords;
     }
 
+    /// <summary>
+    /// Converts a board represented as a 2D char array into a single string.
+    /// </summary>
+    /// <param name="board">The board to convert</param>
+    /// <returns>A string representation of the board</returns>
     internal static string ConvertBoardToString(char[,] board)
     {
         var dimensions = (board.GetLength(0), board.GetLength(1));

@@ -117,18 +117,20 @@ internal class SolverEngine
 
     private void EnsureTrieInitialized()
     {
-        if (Trie.IsEmpty)
+        if (!Trie.IsEmpty)
         {
-            _logger?.Log("Trie is empty, attempting to initialize before execution.");
-            try
-            {
-                InitializeTrie();
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogError($"Failed to initialize Trie during ExecuteAsync: {ex.Message}");
-                throw;
-            }
+            return;
+        }
+
+        _logger?.Log("Trie is empty, attempting to initialize before execution.");
+        try
+        {
+            InitializeTrie();
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError($"Failed to initialize Trie during ExecuteAsync: {ex.Message}");
+            throw;
         }
     }
 
@@ -297,8 +299,6 @@ internal class SolverEngine
             await progressTracker.ReportProgress(new List<WordPath>(), 0, new Dictionary<(int, int), int>());
         }
     }
-
-    
 
     public void Abort()
     {
