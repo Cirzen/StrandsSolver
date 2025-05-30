@@ -19,6 +19,11 @@ public class WordFinder
         _cols = cols;
     }
 
+    /// <summary>
+    /// Performs a depth-first search on the board to find all valid word paths.
+    /// </summary>
+    /// <param name="board"></param>
+    /// <returns></returns>
     public List<WordPath> DepthFirstSearch(char[,] board)
     {
         var foundPaths = new List<WordPath>();

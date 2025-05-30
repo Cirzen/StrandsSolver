@@ -1,12 +1,13 @@
 using System.IO;
 using System.Text.Json;
 using System.Windows;
+using System.Collections.Generic;
 
 namespace Solver.Configuration;
 
 public class ConfigurationService
 {
-    private static readonly string AppName = "StrandsSolver";
+    public static readonly string AppName = "StrandsSolver";
     private static readonly string ConfigFileName = "settings.json";
     private string ConfigFilePath { get; }
 
@@ -62,7 +63,15 @@ public class ConfigurationService
         return new()
         {
             WordListPath = "sowpods.txt",
-            ProgressUpdateIntervalMilliseconds = 500
+            ProgressUpdateIntervalMilliseconds = 500,
+            DoubleClickBehavior = SolutionDoubleClickAction.AddToExcluded,
+            SelectedTheme = AppTheme.Light,
+            PathOpacityNormal = 180, // 0-255
+            DemoBoardsFileName = "DemoBoards.dat",
+            DefaultDemoBoards = new List<string> 
+            {
+                "ralmocornetrvedroateecmnpakerosdcboousimantthtre" 
+            }
         };
     }
 }

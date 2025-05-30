@@ -1,7 +1,20 @@
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+
 namespace Solver;
 
-public static class SolverPreProcessor
+public class SolverPreProcessor
 {
+    private readonly Trie _trie;
+    private readonly ILogger _logger;
+
+    public SolverPreProcessor(Trie trie, ILogger logger)
+    {
+        _trie = trie;
+        _logger = logger;
+    }
+
     /// <summary>
     /// Filters out problematic starter words from a list of potential words on the board.
     /// </summary>
@@ -86,4 +99,22 @@ public static class SolverPreProcessor
         return prunedWordList;
     }
 
+    /// <summary>
+    /// Filters a list of paths based on user-excluded words.
+    /// </summary>
+    /// <param name="paths">The list of <see cref="WordPath"/> objects to filter.</param>
+    /// <param name="userExcludedWords">A list of words to exclude.</param>
+    /// <param name="token">A cancellation token to handle task cancellation.</param>
+    /// <returns>A filtered list of <see cref="WordPath"/> objects.</returns>
+    public List<WordPath> FilterPaths(List<WordPath> paths, List<string> userExcludedWords, CancellationToken token)
+    {
+        if (token.IsCancellationRequested) token.ThrowIfCancellationRequested();
+
+        var filtered = paths
+            .Where(p => !userExcludedWords.Contains(p.Word, System.StringComparer.OrdinalIgnoreCase))
+            .ToList();
+
+        _logger.Log($"Filtered paths from {paths.Count} to {filtered.Count} based on user exclusions.");
+        return filtered;
+    }
 }
