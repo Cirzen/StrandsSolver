@@ -57,6 +57,7 @@
     <AppxPackageSigningEnabled>True</AppxPackageSigningEnabled>
     <NoWarn>$(NoWarn);NU1702</NoWarn>
     <PackageCertificateThumbprint>7285A3CC0BD3CF3F0433ACF16F2CDA14857552D0</PackageCertificateThumbprint>
+    <EntryPointProjectUniqueName>..\Solver\Solver.csproj</EntryPointProjectUniqueName>
   </PropertyGroup>
   <ItemGroup>
     <AppxManifest Include="Package.appxmanifest">
@@ -106,5 +107,8 @@
   <Import Project="$(WapProjPath)\Microsoft.DesktopBridge.targets" />
   <ItemGroup>
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.1742" PrivateAssets="all" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Solver\Solver.csproj" />
   </ItemGroup>
 </Project>
