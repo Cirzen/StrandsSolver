@@ -4,236 +4,206 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Solver"
-        xmlns:localConverters="clr-namespace:Solver.Converters"
+        xmlns:converters="clr-namespace:Solver.Converters"
         mc:Ignorable="d"
-        Title="Strands Solver" Height="700" Width="800"
-        Loaded="Window_Loaded"
-        SizeChanged="Window_SizeChanged">
+        Title="Word Finder" Height="700" Width="1000" MinWidth="800" MinHeight="600"
+        Loaded="Window_Loaded" SizeChanged="Window_SizeChanged"
+        Background="{DynamicResource WindowBackgroundColor}">
 
     <Window.Resources>
-        <localConverters:InverseBooleanConverter x:Key="InverseBooleanConverter"/>
+        <converters:InverseBooleanConverter x:Key="InverseBooleanConverter"/>
     </Window.Resources>
 
-    <DockPanel>
-        <!-- StatusBar at the bottom -->
-        <StatusBar DockPanel.Dock="Bottom">
-            <TextBlock x:Name="StatusBarText" Text="Ready" />
-        </StatusBar>
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
 
-        <!-- Grid to host main content and the settings button -->
-        <Grid>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/> <!-- Top content: Title, Board, Buttons -->
-                <RowDefinition Height="*"/>    <!-- Solution, Included, and Excluded Words Lists -->
-            </Grid.RowDefinitions>
+        <!-- Top Controls: Settings, Debug, Clear, Solve -->
+        <Grid Grid.Row="0" Margin="0,0,0,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <!-- Left-aligned buttons -->
+                <ColumnDefinition Width="Auto"/>
+                <!-- Right-aligned settings button -->
+            </Grid.ColumnDefinitions>
 
-            <!-- Settings Button in the top-right corner -->
-            <Button x:Name="SettingsButton"
-                    Click="SettingsButton_Click"
-                    HorizontalAlignment="Right"
-                    VerticalAlignment="Top"
-                    Width="35" Height="35" Margin="0,5,5,0"
-                    ToolTip="Settings"
-                    FontFamily="Segoe MDL2 Assets" Content="&#xE713;" FontSize="16"
-                    Background="Transparent" BorderBrush="Transparent" Padding="0" Grid.ZIndex="1">
-                <Button.Style>
-                    <Style TargetType="Button">
-                        <Setter Property="Template">
-                            <Setter.Value>
-                                <ControlTemplate TargetType="Button">
-                                    <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="3">
-                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                    </Border>
-                                </ControlTemplate>
-                            </Setter.Value>
-                        </Setter>
-                        <Style.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="#E0E0E0"/>
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter Property="Background" Value="#C0C0C0"/>
-                            </Trigger>
-                        </Style.Triggers>
-                    </Style>
-                </Button.Style>
-            </Button>
-
-            <!-- Main Content in the center -->
-            <StackPanel Grid.Row="0" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,0,0,10">
-                <TextBlock Text="Enter Letters Below" 
-                           FontSize="16" FontWeight="Bold" 
-                           Margin="0,10,0,10" TextAlignment="Center" />
-                <Grid>
-                    <UniformGrid x:Name="BoardGrid" Rows="8" Columns="6" 
-                                 HorizontalAlignment="Center" VerticalAlignment="Center" />
-                    <Canvas x:Name="PathOverlay" IsHitTestVisible="False" />
-                </Grid>
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,10,0,0">
-                    <Button x:Name="ClearButton" Content="Clear" Width="100" Height="30" Margin="5,0" Click="ClearButton_Click" />
-                    <Button x:Name="SolveButton" Content="Solve" Width="100" Height="30" Margin="5,0" Click="SolveButton_Click" />
-                    <Button x:Name="DebugButton" Content="Demo Board" Width="120" Height="30" Click="DebugPopulateButton_Click" />
-                </StackPanel>
+            <StackPanel Orientation="Horizontal">
+                <Button x:Name="DebugButton" Content="Populate Test Board" Margin="0,0,5,0" Padding="10,5" Click="DebugPopulateButton_Click" Background="{DynamicResource ButtonBackgroundColor}" Foreground="{DynamicResource ButtonForegroundColor}"/>
+                <Button x:Name="ClearButton" Content="Clear" Margin="0,0,5,0" Padding="10,5" Click="ClearButton_Click" Background="{DynamicResource ButtonBackgroundColor}" Foreground="{DynamicResource ButtonForegroundColor}"/>
+                <Button x:Name="SolveButton" Content="Solve" Margin="10,0,0,0" Padding="15,8" Click="SolveButton_Click" FontWeight="Bold" FontSize="18" MinWidth="150" Background="{DynamicResource AccentButtonBackgroundColor}" Foreground="{DynamicResource AccentButtonForegroundColor}"/>
             </StackPanel>
 
-            <!-- Solution, Included, and Excluded Words Display -->
-            <Grid Grid.Row="1" Margin="10">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/> <!-- Solution Words -->
-                    <ColumnDefinition Width="*"/> <!-- Included Words -->
-                    <ColumnDefinition Width="*"/> <!-- Excluded Words -->
-                </Grid.ColumnDefinitions>
+            <Button x:Name="SettingsButton" Grid.Column="1" Margin="5,0,0,0" Padding="-9" Click="SettingsButton_Click" 
+                    Background="{DynamicResource ButtonBackgroundColor}" Foreground="{DynamicResource ButtonForegroundColor}"
+                    FontFamily="Segoe UI Symbol" FontWeight="Bold" ToolTip="Settings"
+                    Width="30" Height="30"> 
+                <Viewbox Stretch="Uniform">
+                    <TextBlock Text="⚙" FontSize="24"> <!-- Base FontSize for the icon -->
+                        <TextBlock.RenderTransform>
+                            <TranslateTransform X="0." Y="-1"/> 
+                        </TextBlock.RenderTransform>
+                    </TextBlock>
+                </Viewbox>
+            </Button>
+        </Grid>
 
-                <GroupBox Grid.Column="1" Header="Solution Words" Margin="0,0,5,0">
-                    <ListBox x:Name="SolutionWordsListBox" 
-                             MouseDoubleClick="SolutionWordsListBox_MouseDoubleClick"
-                             SelectionMode="Single"
-                             HorizontalContentAlignment="Stretch">
-                        <ListBox.ItemContainerStyle>
-                            <Style TargetType="ListBoxItem">
-                                <EventSetter Event="MouseEnter" Handler="SolutionWordItem_MouseEnter"/>
-                                <EventSetter Event="MouseLeave" Handler="SolutionWordItem_MouseLeave"/>
-                                <Setter Property="Padding" Value="2"/> <!-- Optional: Adjust padding -->
-                            </Style>
-                        </ListBox.ItemContainerStyle>
-                        <ListBox.ItemTemplate>
-                            <DataTemplate DataType="{x:Type local:DisplayableSolutionWord}">
-                                <Grid HorizontalAlignment="Stretch">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />      <!-- Word Text -->
-                                        <ColumnDefinition Width="Auto" />   <!-- Include Button -->
-                                        <ColumnDefinition Width="Auto" />   <!-- Exclude Button -->
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Text="{Binding Word}" VerticalAlignment="Center" Margin="0,0,5,0" Grid.Column="0"/>
-                                    <Button x:Name="SolutionIncludeButton" Grid.Column="1" Content="&#xE8FB;" FontFamily="Segoe MDL2 Assets" 
-                                            ToolTip="Add to Included Words" Click="SolutionIncludeButton_Click"
-                                            Width="20" Height="20" Margin="2,0" Padding="0" FontSize="12"
-                                            BorderThickness="0" 
-                                            IsEnabled="{Binding IsUserIncluded, Converter={StaticResource InverseBooleanConverter}}">
-                                        <Button.Style>
-                                            <Style TargetType="Button">
-                                                <Setter Property="Background" Value="DarkGreen"/>
-                                                <Setter Property="Foreground" Value="White"/>
-                                                <Setter Property="FontWeight" Value="Bold"/>
-                                                <Setter Property="Template">
-                                                    <Setter.Value>
-                                                        <ControlTemplate TargetType="Button">
-                                                            <Border Background="{TemplateBinding Background}" 
-                                                                    BorderBrush="{TemplateBinding BorderBrush}" 
-                                                                    BorderThickness="{TemplateBinding BorderThickness}" 
-                                                                    CornerRadius="3">
-                                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                                            </Border>
-                                                        </ControlTemplate>
-                                                    </Setter.Value>
-                                                </Setter>
-                                                <Style.Triggers>
-                                                    <Trigger Property="IsMouseOver" Value="True">
-                                                        <Setter Property="Background" Value="Green"/>
-                                                    </Trigger>
-                                                    <Trigger Property="IsPressed" Value="True">
-                                                        <Setter Property="Background" Value="ForestGreen"/>
-                                                    </Trigger>
-                                                    <Trigger Property="IsEnabled" Value="False">
-                                                        <Setter Property="Background" Value="LightGray"/>
-                                                        <Setter Property="Foreground" Value="Gray"/>
-                                                    </Trigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </Button.Style>
-                                    </Button>
-                                    <Button x:Name="SolutionExcludeButton" Grid.Column="2" Content="&#xE711;" FontFamily="Segoe MDL2 Assets" 
-                                            ToolTip="Add to Excluded Words" Click="SolutionExcludeButton_Click"
-                                            Width="20" Height="20" Margin="2,0" Padding="0" FontSize="12"
-                                            BorderThickness="0"
-                                            IsEnabled="{Binding IsUserExcluded, Converter={StaticResource InverseBooleanConverter}}">
-                                        <Button.Style>
-                                            <Style TargetType="Button">
-                                                <Setter Property="Background" Value="DarkRed"/>
-                                                <Setter Property="Foreground" Value="White"/>
-                                                <Setter Property="FontWeight" Value="Bold"/>
-                                                <Setter Property="Template">
-                                                    <Setter.Value>
-                                                        <ControlTemplate TargetType="Button">
-                                                            <Border Background="{TemplateBinding Background}" 
-                                                                    BorderBrush="{TemplateBinding BorderBrush}" 
-                                                                    BorderThickness="{TemplateBinding BorderThickness}" 
-                                                                    CornerRadius="3">
-                                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                                            </Border>
-                                                        </ControlTemplate>
-                                                    </Setter.Value>
-                                                </Setter>
-                                                <Style.Triggers>
-                                                    <Trigger Property="IsMouseOver" Value="True">
-                                                        <Setter Property="Background" Value="Red"/>
-                                                    </Trigger>
-                                                    <Trigger Property="IsPressed" Value="True">
-                                                        <Setter Property="Background" Value="Firebrick"/>
-                                                    </Trigger>
-                                                    <Trigger Property="IsEnabled" Value="False">
-                                                        <Setter Property="Background" Value="LightGray"/>
-                                                        <Setter Property="Foreground" Value="Gray"/>
-                                                    </Trigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </Button.Style>
-                                    </Button>
-                                </Grid>
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
-                        <ListBox.ToolTip>
-                            <ToolTip>
-                                <TextBlock>
-                                    Words found in the current solution. <LineBreak/>
-                                    Double-click a word to perform default action (see Settings).<LineBreak/>
-                                    Use tick/cross buttons to explicitly include/exclude.
-                                </TextBlock>
-                            </ToolTip>
-                        </ListBox.ToolTip>
-                    </ListBox>
-                </GroupBox>
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <!-- Board -->
+                <ColumnDefinition Width="5"/>
+                <!-- Spacer -->
+                <ColumnDefinition Width="*"/>
+                <!-- Solution List -->
+                <ColumnDefinition Width="5"/>
+                <!-- Spacer -->
+                <ColumnDefinition Width="2*"/>
+                <!-- Include/Exclude Lists -->
+            </Grid.ColumnDefinitions>
 
-                <GroupBox Grid.Column="0" Header="Included Words" Margin="5,0,5,0">
-                    <DockPanel>
-                        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,5,0,0">
-                            <TextBox x:Name="NewIncludedWordTextBox" Width="120" Margin="0,0,5,0" VerticalAlignment="Center"/>
-                            <Button x:Name="AddIncludedWordButton" Content="Add" Width="50" Click="AddIncludedWordButton_Click" VerticalAlignment="Center"/>
-                        </StackPanel>
-                        <Button x:Name="ClearIncludedWordsButton" Content="Clear Inclusions" DockPanel.Dock="Bottom" Margin="0,5,0,0" Click="ClearIncludedWordsButton_Click"/>
-                        <ListBox x:Name="IncludedWordsListBox" SelectionMode="Single"
-                                 MouseDoubleClick="IncludedWordsListBox_MouseDoubleClick">
-                            <ListBox.ToolTip>
-                                <TextBlock>
-                                    These words will be prioritized in the next search. <LineBreak/>
-                                    Double-click a word here to remove it from this list.
-                                </TextBlock>
-                            </ListBox.ToolTip>
-                        </ListBox>
-                    </DockPanel>
-                </GroupBox>
+            <!-- Board Grid and Path Overlay -->
+            <Viewbox Grid.Column="0" Stretch="Uniform" MaxWidth="400" MaxHeight="550">
+                <Grid>
+                    <UniformGrid x:Name="BoardGrid" Rows="8" Columns="6" Background="{DynamicResource ControlBackgroundColor}">
+                        <!-- TextBoxes are added in code-behind.
+                             Their Background, Foreground, and BorderBrush are now set using DynamicResource
+                             references in InitializeBoard and SetBoardEnabled methods. -->
+                    </UniformGrid>
+                    <Canvas x:Name="PathOverlay" Background="Transparent" IsHitTestVisible="False"/>
+                </Grid>
+            </Viewbox>
 
-                <GroupBox Grid.Column="2" Header="Excluded Words" Margin="5,0,0,0">
-                    <DockPanel>
-                        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,5,0,0">
-                            <TextBox x:Name="NewExcludedWordTextBox" Width="120" Margin="0,0,5,0" VerticalAlignment="Center"
-                                     ToolTip="Enter a word to exclude and click Add."/>
-                            <Button x:Name="AddExcludedWordButton" Content="Add" Width="50" 
-                                    Click="AddExcludedWordButton_Click" VerticalAlignment="Center"/>
-                        </StackPanel>
-                        <Button x:Name="ClearExcludedWordsButton" Content="Clear Exclusions" DockPanel.Dock="Bottom" Margin="0,5,0,0" Click="ClearExcludedWordsButton_Click"/>
-                        <ListBox x:Name="ExcludedWordsListBox" SelectionMode="Single"
-                                 MouseDoubleClick="ExcludedWordsListBox_MouseDoubleClick">
-                            <ListBox.ToolTip>
-                                <TextBlock>
-                                    These words will be excluded from the next search. <LineBreak/>
-                                    Double-click a word here to remove it from this list.
-                                </TextBlock>
-                            </ListBox.ToolTip>
-                        </ListBox>
-                    </DockPanel>
-                </GroupBox>
+            <!-- Solution Words ListBox -->
+            <DockPanel Grid.Column="2">
+                <TextBlock DockPanel.Dock="Top" Text="Found Words:" FontWeight="SemiBold" Margin="0,0,0,5" Foreground="{DynamicResource TextForegroundColor}"/>
+                <ListBox x:Name="SolutionWordsListBox" MouseDoubleClick="SolutionWordsListBox_MouseDoubleClick"
+                         Background="{DynamicResource ControlBackgroundColor}" Foreground="{DynamicResource TextForegroundColor}" BorderBrush="{DynamicResource BorderColorBrush}">
+                    <ListBox.ItemContainerStyle>
+                        <Style TargetType="ListBoxItem">
+                            <Setter Property="Padding" Value="5,3"/>
+                            <EventSetter Event="MouseEnter" Handler="SolutionWordItem_MouseEnter"/>
+                            <EventSetter Event="MouseLeave" Handler="SolutionWordItem_MouseLeave"/>
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="ListBoxItem">
+                                        <Border x:Name="Bd" Padding="{TemplateBinding Padding}" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="0,0,0,1">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="{Binding Word}" VerticalAlignment="Center" Foreground="{DynamicResource TextForegroundColor}"/>
+                                                <Button Grid.Column="1" Content="✔️" Margin="2,0,1,0" Padding="3" FontSize="12" ToolTip="Add to Included" 
+                                                        CommandParameter="{Binding}" Click="SolutionIncludeButton_Click"
+                                                        IsEnabled="{Binding IsUserIncluded, Converter={StaticResource InverseBooleanConverter}}">
+                                                    <Button.Style>
+                                                        <Style TargetType="Button">
+                                                            <Setter Property="Background" Value="{DynamicResource IncludeButtonBackgroundColor}"/>
+                                                            <Setter Property="Foreground" Value="{DynamicResource IncludeButtonForegroundColor}"/>
+                                                            <Style.Triggers>
+                                                                <Trigger Property="IsEnabled" Value="False">
+                                                                    <Setter Property="Background" Value="{DynamicResource IncludeButtonDisabledBackgroundColor}"/>
+                                                                    <Setter Property="Foreground" Value="{DynamicResource IncludeButtonDisabledForegroundColor}"/>
+                                                                </Trigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Button.Style>
+                                                </Button>
+                                                <Button Grid.Column="2" Content="❌" Margin="1,0,2,0" Padding="3" FontSize="11" ToolTip="Add to Excluded" 
+                                                        CommandParameter="{Binding}" Click="SolutionExcludeButton_Click"
+                                                        IsEnabled="{Binding IsUserExcluded, Converter={StaticResource InverseBooleanConverter}}">
+                                                    <Button.Style>
+                                                        <Style TargetType="Button">
+                                                            <Setter Property="Background" Value="{DynamicResource ExcludeButtonBackgroundColor}"/>
+                                                            <Setter Property="Foreground" Value="{DynamicResource ExcludeButtonForegroundColor}"/>
+                                                            <Style.Triggers>
+                                                                <Trigger Property="IsEnabled" Value="False">
+                                                                    <Setter Property="Background" Value="{DynamicResource ExcludeButtonDisabledBackgroundColor}"/>
+                                                                    <Setter Property="Foreground" Value="{DynamicResource ExcludeButtonDisabledForegroundColor}"/>
+                                                                </Trigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Button.Style>
+                                                </Button>
+                                            </Grid>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource ListItemHoverBackgroundColor}"/>
+                                            </Trigger>
+                                            <Trigger Property="IsSelected" Value="True">
+                                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource ListItemSelectionBackgroundColor}"/>
+                                                <Setter Property="Foreground" Value="{DynamicResource ListItemSelectionForegroundColor}"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </ListBox.ItemContainerStyle>
+                </ListBox>
+            </DockPanel>
+
+            <!-- Included/Excluded Lists -->
+            <Grid Grid.Column="4">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <!-- Included Header -->
+                    <RowDefinition Height="*"/>
+                    <!-- Included ListBox -->
+                    <RowDefinition Height="Auto"/>
+                    <!-- Included Add Controls -->
+                    <RowDefinition Height="20"/>
+                    <!-- Spacer -->
+                    <RowDefinition Height="Auto"/>
+                    <!-- Excluded Header -->
+                    <RowDefinition Height="*"/>
+                    <!-- Excluded ListBox -->
+                    <RowDefinition Height="Auto"/>
+                    <!-- Excluded Add Controls -->
+                </Grid.RowDefinitions>
+
+                <!-- Included Words -->
+                <DockPanel Grid.Row="0">
+                    <Button DockPanel.Dock="Right" x:Name="ClearIncludedWordsButton" Content="Clear" Padding="5,2" Margin="5,0,0,5" Click="ClearIncludedWordsButton_Click" Background="{DynamicResource ButtonBackgroundColor}" Foreground="{DynamicResource ButtonForegroundColor}"/>
+                    <TextBlock Text="Included Words:" FontWeight="SemiBold" Margin="0,0,0,5" Foreground="{DynamicResource TextForegroundColor}"/>
+                </DockPanel>
+                <ListBox Grid.Row="1" x:Name="IncludedWordsListBox" MouseDoubleClick="IncludedWordsListBox_MouseDoubleClick"
+                         Background="{DynamicResource ControlBackgroundColor}" Foreground="{DynamicResource TextForegroundColor}" BorderBrush="{DynamicResource BorderColorBrush}"/>
+                <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,5,0,0">
+                    <TextBox x:Name="NewIncludedWordTextBox" Width="120" Margin="0,0,5,0" 
+                             Background="{DynamicResource TextBoxBackgroundColor}" 
+                             Foreground="{DynamicResource TextBoxForegroundColor}" 
+                             BorderBrush="{DynamicResource BorderColorBrush}"/>
+                    <Button x:Name="AddIncludedWordButton" Content="Add" Padding="10,2" Click="AddIncludedWordButton_Click" Background="{DynamicResource ButtonBackgroundColor}" Foreground="{DynamicResource ButtonForegroundColor}"/>
+                </StackPanel>
+
+                <!-- Excluded Words -->
+                <DockPanel Grid.Row="4" Margin="0,10,0,0">
+                    <Button DockPanel.Dock="Right" x:Name="ClearExcludedWordsButton" Content="Clear" Padding="5,2" Margin="5,0,0,5" Click="ClearExcludedWordsButton_Click" Background="{DynamicResource ButtonBackgroundColor}" Foreground="{DynamicResource ButtonForegroundColor}"/>
+                    <TextBlock Text="Excluded Words:" FontWeight="SemiBold" Margin="0,0,0,5" Foreground="{DynamicResource TextForegroundColor}"/>
+                </DockPanel>
+                <ListBox Grid.Row="5" x:Name="ExcludedWordsListBox" MouseDoubleClick="ExcludedWordsListBox_MouseDoubleClick"
+                         Background="{DynamicResource ControlBackgroundColor}" Foreground="{DynamicResource TextForegroundColor}" BorderBrush="{DynamicResource BorderColorBrush}"/>
+                <StackPanel Grid.Row="6" Orientation="Horizontal" Margin="0,5,0,0">
+                    <TextBox x:Name="NewExcludedWordTextBox" Width="120" Margin="0,0,5,0" 
+                             Background="{DynamicResource TextBoxBackgroundColor}" 
+                             Foreground="{DynamicResource TextBoxForegroundColor}" 
+                             BorderBrush="{DynamicResource BorderColorBrush}"/>
+                    <Button x:Name="AddExcludedWordButton" Content="Add" Padding="10,2" Click="AddExcludedWordButton_Click" Background="{DynamicResource ButtonBackgroundColor}" Foreground="{DynamicResource ButtonForegroundColor}"/>
+                </StackPanel>
             </Grid>
         </Grid>
-    </DockPanel>
+
+        <!-- Status Bar -->
+        <StatusBar Grid.Row="2" VerticalAlignment="Bottom" Background="{DynamicResource StatusBarBackgroundColor}">
+            <StatusBarItem>
+                <TextBlock x:Name="StatusBarText" Text="Ready" Foreground="{DynamicResource StatusBarForegroundColor}"/>
+            </StatusBarItem>
+        </StatusBar>
+    </Grid>
 </Window>

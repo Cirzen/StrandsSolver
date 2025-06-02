@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Source>C:\Users\david.johnson2\Documents\repos\TwelveToneTech.StrandsSolver\assets\SolverIcon.png</Source>
+    <SmallTileSource>C:\Users\david.johnson2\Documents\repos\TwelveToneTech.StrandsSolver\assets\SolverIcon.png</SmallTileSource>
+    <MediumTileSource>C:\Users\david.johnson2\Documents\repos\TwelveToneTech.StrandsSolver\assets\SolverIcon.png</MediumTileSource>
+    <WideTileSource>C:\Users\david.johnson2\Documents\repos\TwelveToneTech.StrandsSolver\assets\SolverIcon.png</WideTileSource>
+    <LargeTileSource>C:\Users\david.johnson2\Documents\repos\TwelveToneTech.StrandsSolver\assets\SolverIcon.png</LargeTileSource>
+    <AppIconSource>C:\Users\david.johnson2\Documents\repos\TwelveToneTech.StrandsSolver\assets\SolverIcon.png</AppIconSource>
+    <SplashScreenSource>C:\Users\david.johnson2\Documents\repos\TwelveToneTech.StrandsSolver\assets\SolverIcon.png</SplashScreenSource>
+    <PackageLogoSource>C:\Users\david.johnson2\Documents\repos\TwelveToneTech.StrandsSolver\assets\SolverIcon.png</PackageLogoSource>
+  </PropertyGroup>
+</Project>

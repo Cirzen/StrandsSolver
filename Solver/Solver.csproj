@@ -11,6 +11,12 @@
 
     <ItemGroup>
       <None Remove="DemoBoards.txt" />
+      <None Remove="Resources\DemoBoards.txt" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Page Remove="src\Resources\DarkTheme.xaml" />
+      <Page Remove="src\Resources\LightTheme.xaml" />
     </ItemGroup>
 
     <ItemGroup>
@@ -19,6 +25,15 @@
         <XamlRuntime>Wpf</XamlRuntime>
         <SubType>Designer</SubType>
       </ApplicationDefinition>
+    </ItemGroup>
+
+    <ItemGroup>
+      <Content Include="Resources\DemoBoards.txt" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Resource Include="src\Resources\DarkTheme.xaml" />
+      <Resource Include="src\Resources\LightTheme.xaml" />
     </ItemGroup>
 
     <ItemGroup>
@@ -47,6 +62,10 @@
       <Content Update="Resources\DemoBoards.txt">
         <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       </Content>
+    </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="Tests\" />
     </ItemGroup>
 
 </Project>

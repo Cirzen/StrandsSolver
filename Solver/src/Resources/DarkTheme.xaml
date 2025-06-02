@@ -1,0 +1,42 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- General Colors -->
+    <SolidColorBrush x:Key="WindowBackgroundColor" Color="#2D2D30"/>
+    <SolidColorBrush x:Key="TextForegroundColor" Color="White"/>
+    <SolidColorBrush x:Key="ControlBackgroundColor" Color="#3F3F46"/>
+    <SolidColorBrush x:Key="BorderColorBrush" Color="#505050"/>
+
+    <!-- Button Colors -->
+    <SolidColorBrush x:Key="ButtonBackgroundColor" Color="#505050"/>
+    <SolidColorBrush x:Key="ButtonForegroundColor" Color="White"/>
+    <SolidColorBrush x:Key="AccentButtonBackgroundColor" Color="#007ACC"/>
+    <SolidColorBrush x:Key="AccentButtonForegroundColor" Color="White"/>
+    
+    <!-- Specific Action Button Colors -->
+    <SolidColorBrush x:Key="IncludeButtonBackgroundColor" Color="DarkGreen"/>
+    <SolidColorBrush x:Key="IncludeButtonForegroundColor" Color="White"/>
+    <SolidColorBrush x:Key="ExcludeButtonBackgroundColor" Color="DarkRed"/>
+    <SolidColorBrush x:Key="ExcludeButtonForegroundColor" Color="White"/>
+    <SolidColorBrush x:Key="IncludeButtonDisabledBackgroundColor" Color="#FF2E8B57"/> <!-- SeaGreen (darker green) -->
+    <SolidColorBrush x:Key="IncludeButtonDisabledForegroundColor" Color="#FFA9A9A9"/> <!-- DarkGray -->
+    <SolidColorBrush x:Key="ExcludeButtonDisabledBackgroundColor" Color="#FF8B0000"/> <!-- DarkRed (can be same or slightly muted) -->
+    <SolidColorBrush x:Key="ExcludeButtonDisabledForegroundColor" Color="#FFA9A9A9"/> <!-- DarkGray -->
+
+    <!-- TextBox Colors -->
+    <SolidColorBrush x:Key="TextBoxBackgroundColor" Color="#3F3F46"/>
+    <SolidColorBrush x:Key="TextBoxForegroundColor" Color="White"/>
+    <SolidColorBrush x:Key="TextBoxDisabledBackgroundColor" Color="#4A4A4A"/>
+    <SolidColorBrush x:Key="TextBoxBorderColor" Color="#505050"/> <!-- Added for consistency -->
+
+    <!-- ListBox Colors -->
+    <SolidColorBrush x:Key="ListItemHoverBackgroundColor" Color="#4A4A52"/>
+    <SolidColorBrush x:Key="ListItemSelectionBackgroundColor" Color="#007ACC"/>
+    <SolidColorBrush x:Key="ListItemSelectionForegroundColor" Color="White"/>
+
+    <!-- StatusBar Colors -->
+    <SolidColorBrush x:Key="StatusBarBackgroundColor" Color="#1E1E1E"/>
+    <SolidColorBrush x:Key="StatusBarForegroundColor" Color="White"/>
+    <SolidColorBrush x:Key="StatusBarErrorForegroundColor" Color="#FF8080"/>
+    
+</ResourceDictionary>
