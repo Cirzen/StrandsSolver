@@ -10,7 +10,7 @@
   <Identity
     Name="49e56444-6479-469d-b092-becb81c46897"
     Publisher="CN=TwelveToneTech"
-    Version="1.0.0.0" />
+    Version="0.0.1.0" />
 
   <Properties>
     <DisplayName>TwelveToneTech.Solver</DisplayName>
