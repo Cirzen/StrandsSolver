@@ -30,6 +30,7 @@ jobs:
 
     env:
       Solution_Name: TwelveToneTech.StrandsSolver.sln
+      Solution_Name_NoAppPkg: TwelveToneTech.StrandsSolver_NoAppPkg.slnf
       Test_Project_Path: Solver.Tests\Solver.Tests.csproj
       Wap_Project_Directory: WindowsApplicationPackaging
       Wap_Project_Path: WindowsApplicationPackaging\WindowsApplicationPackaging.wapproj
@@ -58,7 +59,7 @@ jobs:
         
     # Build the solution
     - name: Build the solution
-      run: msbuild $env:Solution_Name /t:Build /p:Configuration=$env:Configuration /p:"ExcludeProjectsFromBuild=WindowsApplicationPackaging" /p:RuntimeIdentifiers="win-x86" /p:Platform="x86"
+      run: msbuild $env:Solution_Name_NoAppPkg /t:Build /p:Configuration=$env:Configuration /p:"ExcludeProjectsFromBuild=WindowsApplicationPackaging" /p:RuntimeIdentifiers="win-x86" /p:Platform="x86"
       env:
         Configuration: ${{ matrix.configuration }}
     
