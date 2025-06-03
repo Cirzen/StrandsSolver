@@ -58,7 +58,7 @@ jobs:
         
     # Build the solution
     - name: Build the solution
-      run: msbuild $env:Solution_Name /t:Build /p:Configuration=$env:Configuration /p:GenerateAppxPackageOnBuild=false
+      run: msbuild $env:Solution_Name /t:Build /p:Configuration=$env:Configuration /p:"ExcludeProjectsFromBuild=WindowsApplicationPackaging"
       env:
         Configuration: ${{ matrix.configuration }}
     
