@@ -1,0 +1,9 @@
+{
+  "solution": {
+    "path": "TwelveToneTech.StrandsSolver.sln",
+    "projects": [
+      "Solver.Tests\\Solver.Tests.csproj",
+      "Solver\\Solver.csproj"
+    ]
+  }
+}
