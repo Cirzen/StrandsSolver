@@ -58,7 +58,7 @@ jobs:
         
     # Build the solution
     - name: Build the solution
-      run: msbuild $env:Solution_Name /t:Build /p:Configuration=$env:Configuration /p:"ExcludeProjectsFromBuild=WindowsApplicationPackaging"
+      run: msbuild $env:Solution_Name /t:Build /p:Configuration=$env:Configuration /p:"ExcludeProjectsFromBuild=WindowsApplicationPackaging" /p:RuntimeIdentifiers="win-x86"
       env:
         Configuration: ${{ matrix.configuration }}
     
