@@ -10,4 +10,11 @@
     <SplashScreenSource>C:\Users\david.johnson2\Documents\repos\TwelveToneTech.StrandsSolver\assets\SolverIcon.png</SplashScreenSource>
     <PackageLogoSource>C:\Users\david.johnson2\Documents\repos\TwelveToneTech.StrandsSolver\assets\SolverIcon.png</PackageLogoSource>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <DebuggerFlavor>AppHostLocalDebugger</DebuggerFlavor>
+    <RemoteDebugEnabled>False</RemoteDebugEnabled>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <DebuggerFlavor>AppHostLocalDebugger</DebuggerFlavor>
+  </PropertyGroup>
 </Project>
