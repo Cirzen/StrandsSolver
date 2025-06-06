@@ -30,9 +30,10 @@ public partial class MainWindow : Window
     private readonly ProgressTracker _progressTracker;
     private readonly ILogger _appLogger; // Single logger for the application
     private CancellationTokenSource _currentSolverCts; // To check for abort in finally block
+    private bool _noSolutionFound = false;
 
-    private ObservableCollection<string> UserExcludedWords { get; set; } = new();
-    private ObservableCollection<string> UserIncludedWords { get; set; } = new();
+    private ObservableCollection<IncludedWord> UserExcludedWords { get; set; } = new();
+    private ObservableCollection<IncludedWord> UserIncludedWords { get; set; } = new();
     private ObservableCollection<DisplayableSolutionWord> DisplayableSolutionWords { get; set; } = new();
 
     public MainWindow()
@@ -46,10 +47,12 @@ public partial class MainWindow : Window
         UserIncludedWords.CollectionChanged += UserInclusionExclusion_CollectionChanged;
         UserExcludedWords.CollectionChanged += UserInclusionExclusion_CollectionChanged;
 
-        async Task ReportProgressAction(List<WordPath> solutionForDisplay, long wps, Dictionary<(int, int), int> heatMap)
+        async Task ReportProgressAction(List<WordPath> solutionForDisplay, long wps)
         {
+            // If there's a non-empty solution or we're getting progress updates
             if (solutionForDisplay.Any() || wps > 0)
             {
+                // Update the WPS information in the status bar if it's appropriate
                 TimeSpan totalElapsedTime = _progressTracker.GetElapsedTimeThisSolve();
                 long totalWordsAttempted = _progressTracker.GetTotalWordsAttemptedThisSolve();
                 double overallWps = (totalElapsedTime.TotalSeconds > 0) ? (totalWordsAttempted / totalElapsedTime.TotalSeconds) : 0;
@@ -57,57 +60,72 @@ public partial class MainWindow : Window
                 {
                     overallWps = 0;
                 }
-                if (!(_currentSolverCts != null && _currentSolverCts.IsCancellationRequested) && (solutionForDisplay.Any() || wps > 0))
+
+                // Only update status bar if not aborted/no solution found and we have valid data
+                if (!(_currentSolverCts != null && _currentSolverCts.IsCancellationRequested) &&
+                    !_noSolutionFound &&
+                    (solutionForDisplay.Any() || wps > 0))
                 {
                     await Dispatcher.InvokeAsync(() => { UpdateStatusBar($"WPS: {wps:F0} | WPS (All): {overallWps:F0}"); });
                 }
             }
 
+            // Don't update the UI if we've aborted or no solution was found
             if (_currentSolverCts == null || !_currentSolverCts.IsCancellationRequested)
             {
-                _ = Dispatcher.BeginInvoke(new Action(() =>
+                // Only update DisplayableSolutionWords if we have a solution to display
+                // and we're not in the "No Solution Found" state
+                if (solutionForDisplay.Any() && !_noSolutionFound)
                 {
-                    _lastDisplayedSolutionPaths = new(solutionForDisplay);
-                    _currentlyHighlightedPath = null;
-                    RedrawPathsWithHighlight();
-
-                    var newSolutionWordPaths = solutionForDisplay;
-
-                    var newSolutionWordsSet = newSolutionWordPaths.Select(wp => wp.Word).ToHashSet();
-                    for (int i = DisplayableSolutionWords.Count - 1; i >= 0; i--)
+                    _ = Dispatcher.BeginInvoke(new Action(() =>
                     {
-                        if (!newSolutionWordsSet.Contains(DisplayableSolutionWords[i].Word))
+                        if (_currentSolverCts != null && _currentSolverCts.IsCancellationRequested)
                         {
-                            DisplayableSolutionWords.RemoveAt(i);
+                            return;
                         }
-                    }
+                        _lastDisplayedSolutionPaths = new(solutionForDisplay);
+                        _currentlyHighlightedPath = null;
+                        RedrawPathsWithHighlight();
 
-                    for (int i = 0; i < newSolutionWordPaths.Count; i++)
-                    {
-                        var requiredPath = newSolutionWordPaths[i];
-                        var existingDisplayWord = DisplayableSolutionWords.FirstOrDefault(dsw => dsw.Word == requiredPath.Word);
+                        var newSolutionWordPaths = solutionForDisplay;
+                        var newSolutionWordsSet = newSolutionWordPaths.Select(wp => wp.Word).ToHashSet();
 
-                        if (existingDisplayWord != null)
+                        for (int i = DisplayableSolutionWords.Count - 1; i >= 0; i--)
                         {
-                            int currentIndex = DisplayableSolutionWords.IndexOf(existingDisplayWord);
-                            if (currentIndex != i)
+                            if (!newSolutionWordsSet.Contains(DisplayableSolutionWords[i].Word))
                             {
-                                DisplayableSolutionWords.Move(currentIndex, i);
+                                DisplayableSolutionWords.RemoveAt(i);
                             }
                         }
-                        else
+
+                        for (int i = 0; i < newSolutionWordPaths.Count; i++)
                         {
-                            DisplayableSolutionWords.Insert(i, new(requiredPath));
+                            var requiredPath = newSolutionWordPaths[i];
+                            var existingDisplayWord = DisplayableSolutionWords.FirstOrDefault(dsw => dsw.Word == requiredPath.Word);
+
+                            if (existingDisplayWord != null)
+                            {
+                                int currentIndex = DisplayableSolutionWords.IndexOf(existingDisplayWord);
+                                if (currentIndex != i)
+                                {
+                                    DisplayableSolutionWords.Move(currentIndex, i);
+                                }
+                            }
+                            else
+                            {
+                                DisplayableSolutionWords.Insert(i, new(requiredPath));
+                            }
                         }
-                    }
 
-                    while (DisplayableSolutionWords.Count > newSolutionWordPaths.Count)
-                    {
-                        DisplayableSolutionWords.RemoveAt(DisplayableSolutionWords.Count - 1);
-                    }
+                        while (DisplayableSolutionWords.Count > newSolutionWordPaths.Count)
+                        {
+                            DisplayableSolutionWords.RemoveAt(DisplayableSolutionWords.Count - 1);
+                        }
 
-                    UpdateDisplayableWordStates();
-                }), DispatcherPriority.Background);
+                        UpdateDisplayableWordStates();
+                        UpdateIncludedWordsPathStatus();
+                    }), DispatcherPriority.Background);
+                }
             }
         }
 
@@ -131,6 +149,21 @@ public partial class MainWindow : Window
         _appLogger = loggerForRelease;
         _solverEngine = new(_appLogger);
 #endif
+    }
+
+    // Helper method to update the HasPath status of all included words
+    private void UpdateIncludedWordsPathStatus()
+    {
+        // Create a set of all words that have paths on the board
+        var wordsWithPaths = new HashSet<string>(
+            _lastDisplayedSolutionPaths.Select(wp => wp.Word),
+            StringComparer.OrdinalIgnoreCase);
+
+        // Update the HasPath property for each included word
+        foreach (var includedWord in UserIncludedWords)
+        {
+            includedWord.HasPath = wordsWithPaths.Contains(includedWord.Word);
+        }
     }
 
     private string GetDemoBoardsPath()
@@ -386,8 +419,13 @@ public partial class MainWindow : Window
             return;
         }
 
+        // Log a line here to indicate the current state of the cancellation token source
+        _appLogger.Log($"Starting solve operation. Cancellation requested: {_currentSolverCts?.IsCancellationRequested ?? false}");
+
         _isBoardAlreadyClear = false;
         _currentSolverCts = new CancellationTokenSource();
+        var cancellationToken = _currentSolverCts.Token;
+        _noSolutionFound = false;
 
         var boardStringBuilder = new StringBuilder();
         bool boardIsValid = true;
@@ -457,7 +495,10 @@ public partial class MainWindow : Window
         {
             try
             {
-                if (solverTaskCts.IsCancellationRequested) return;
+                if (solverTaskCts.IsCancellationRequested)
+                {
+                    return;
+                }
 
                 await Dispatcher.InvokeAsync(() =>
                 {
@@ -469,9 +510,22 @@ public partial class MainWindow : Window
                     }
                 });
 
-                if (solverTaskCts.IsCancellationRequested) return;
+                if (solverTaskCts.IsCancellationRequested)
+                {
+                    return;
+                }
 
-                await _solverEngine.ExecuteAsync(board, knownWords, _progressTracker, UserExcludedWords.ToList());
+                var solution = await _solverEngine.ExecuteAsync(board,
+                                                             knownWords.Select(k => k.Word).ToList(),
+                                                             _progressTracker,
+                                                             UserExcludedWords.Select(e => e.Word).ToList(),
+                                                             cancellationToken);
+
+                // Check if no solution was found
+                if (solution != null && !solution.IsSolved)
+                {
+                    _noSolutionFound = true;
+                }
             }
             catch (OperationCanceledException)
             {
@@ -503,11 +557,47 @@ public partial class MainWindow : Window
         });
     }
 
+    // Find an IncludedWord by string value
+    private IncludedWord FindIncludedWord(ObservableCollection<IncludedWord> collection, string word)
+    {
+        return collection.FirstOrDefault(w => string.Equals(w.Word, word, StringComparison.OrdinalIgnoreCase));
+    }
+
+    // Add a word if it doesn't exist
+    private void AddWordToCollection(ObservableCollection<IncludedWord> collection, string word, bool hasPath = true)
+    {
+        if (FindIncludedWord(collection, word) == null)
+        {
+            collection.Add(new IncludedWord(word, hasPath));
+        }
+    }
+
+    // Remove a word by string value
+    private bool RemoveWordFromCollection(ObservableCollection<IncludedWord> collection, string word)
+    {
+        var item = FindIncludedWord(collection, word);
+        if (item != null)
+        {
+            return collection.Remove(item);
+        }
+        return false;
+    }
+
+    // Check if collection contains a word
+    private bool ContainsWord(ObservableCollection<IncludedWord> collection, string word)
+    {
+        return FindIncludedWord(collection, word) != null;
+    }
+
     private void SetBoardEnabled(bool isEnabled)
     {
         foreach (var textBox in _boardTextBoxes)
         {
-            if (textBox == null) continue;
+            if (textBox == null)
+            {
+                continue;
+            }
+
             textBox.IsEnabled = isEnabled;
             textBox.Background = isEnabled ? (SolidColorBrush)Application.Current.Resources["TextBoxBackgroundColor"] : (SolidColorBrush)Application.Current.Resources["TextBoxDisabledBackgroundColor"];
             textBox.Foreground = (SolidColorBrush)Application.Current.Resources["TextForegroundColor"];
@@ -517,7 +607,7 @@ public partial class MainWindow : Window
 
     private void AbortSolver()
     {
-        if (_currentSolverCts != null && !_currentSolverCts.IsCancellationRequested)
+        if (_currentSolverCts is not null && !_currentSolverCts.IsCancellationRequested)
         {
             _currentSolverCts.Cancel();
         }
@@ -541,18 +631,9 @@ public partial class MainWindow : Window
         });
     }
 
-    private void ClearStatusBar()
-    {
-        Dispatcher.Invoke(() =>
-        {
-            StatusBarText.Text = string.Empty;
-            StatusBarText.Foreground = Brushes.Black;
-        });
-    }
-
     private void ClearButton_Click(object sender, RoutedEventArgs e)
     {
-        bool boardWasActuallyCleared = false;
+        bool boardWasCleared = false;
         foreach (var textBox in _boardTextBoxes)
         {
             if (string.IsNullOrEmpty(textBox.Text))
@@ -561,27 +642,27 @@ public partial class MainWindow : Window
             }
 
             textBox.Clear();
-            boardWasActuallyCleared = true;
+            boardWasCleared = true;
         }
 
         if (PathOverlay.Children.Count > 0)
         {
             PathOverlay.Children.Clear();
-            boardWasActuallyCleared = true;
+            boardWasCleared = true;
         }
 
         if (DisplayableSolutionWords.Any())
         {
             DisplayableSolutionWords.Clear();
-            boardWasActuallyCleared = true;
+            boardWasCleared = true;
         }
 
-        if (boardWasActuallyCleared) 
+        if (boardWasCleared) 
         {
             _solverEngine.ClearPrePruningCache();
         }
 
-        if (boardWasActuallyCleared || !_isBoardAlreadyClear)
+        if (boardWasCleared || !_isBoardAlreadyClear)
         {
             _appLogger.Log("Board and solution display cleared. Click Clear again to clear Include/Exclude lists.");
             _isBoardAlreadyClear = true;
@@ -615,11 +696,11 @@ public partial class MainWindow : Window
 
     private void DebugPopulateButton_Click(object sender, RoutedEventArgs e)
     {
-        PopulateBoardWithDebugData();
+        PopulateBoardWithDemoData();
         _solverEngine.ClearPrePruningCache();
     }
 
-    private void PopulateBoardWithDebugData()
+    private void PopulateBoardWithDemoData()
     {
         int rows = _boardTextBoxes.GetLength(0);
         int cols = _boardTextBoxes.GetLength(1);
@@ -659,62 +740,6 @@ public partial class MainWindow : Window
         _isBoardAlreadyClear = false;
 
         _appLogger.Log($"Populated with demo board: #{_debugBoardIndex}. Included/Excluded lists cleared.");
-    }
-
-    private void DrawPaths(List<WordPath> paths)
-    {
-        PathOverlay.Children.Clear();
-        if (paths == null || !paths.Any())
-        {
-            return;
-        }
-
-        foreach (var wordPath in paths)
-        {
-            bool isHighlighted = (wordPath == _currentlyHighlightedPath);
-            var random = new Random(wordPath.Word.GetHashCode());
-            
-            SolidColorBrush brush;
-            double strokeThickness = 4;
-            DropShadowEffect glowEffect = null;
-
-            if (isHighlighted)
-            {
-                brush = new(Colors.Gold);
-                strokeThickness = 6;
-                glowEffect = new()
-                {
-                    Color = Colors.Yellow,
-                    ShadowDepth = 0,
-                    BlurRadius = 10,
-                    Opacity = 0.9
-                };
-            }
-            else
-            {
-                byte lineOpacity = App.ConfigService.Settings.PathOpacityNormal;
-                var color = Color.FromArgb(lineOpacity, (byte)random.Next(100, 200), (byte)random.Next(100, 200), (byte)random.Next(100, 200));
-                brush = new(color);
-            }
-
-            for (int i = 1; i < wordPath.Positions.Count; i++)
-            {
-                var start = wordPath.Positions[i - 1];
-                var end = wordPath.Positions[i];
-                var startPoint = GetCanvasCoordinates(start);
-                var endPoint = GetCanvasCoordinates(end);
-
-                var line = new Line
-                {
-                    X1 = startPoint.X, Y1 = startPoint.Y,
-                    X2 = endPoint.X, Y2 = endPoint.Y,
-                    Stroke = brush,
-                    StrokeThickness = strokeThickness,
-                    Effect = isHighlighted ? glowEffect : null,
-                };
-                PathOverlay.Children.Add(line);
-            }
-        }
     }
 
     private Point GetCanvasCoordinates((int Row, int Col) position)
@@ -793,10 +818,10 @@ public partial class MainWindow : Window
 
             if (behavior == SolutionDoubleClickAction.AddToExcluded)
             {
-                if (!UserExcludedWords.Contains(selectedWord))
+                if (!ContainsWord(UserExcludedWords, selectedWord))
                 {
-                    UserExcludedWords.Add(selectedWord);
-                    UserIncludedWords.Remove(selectedWord);
+                    AddWordToCollection(UserExcludedWords, selectedWord);
+                    RemoveWordFromCollection(UserIncludedWords, selectedWord);
                     _appLogger.Log($"'{selectedWord}' added to excluded words list (double-click).");
                 }
                 else
@@ -806,10 +831,10 @@ public partial class MainWindow : Window
             }
             else
             {
-                if (!UserIncludedWords.Contains(selectedWord))
+                if (!ContainsWord(UserIncludedWords, selectedWord))
                 {
-                    UserIncludedWords.Add(selectedWord);
-                    UserExcludedWords.Remove(selectedWord);
+                    AddWordToCollection(UserIncludedWords, selectedWord);
+                    RemoveWordFromCollection(UserExcludedWords, selectedWord);
                     _appLogger.Log($"'{selectedWord}' added to included words list (double-click).");
                 }
                 else
@@ -825,10 +850,10 @@ public partial class MainWindow : Window
 
             if (behavior == SolutionDoubleClickAction.AddToExcluded)
             {
-                if (!UserExcludedWords.Contains(selectedWord))
+                if (!ContainsWord(UserExcludedWords, selectedWord))
                 {
-                    UserExcludedWords.Add(selectedWord);
-                    UserIncludedWords.Remove(selectedWord);
+                    AddWordToCollection(UserExcludedWords, selectedWord);
+                    RemoveWordFromCollection(UserIncludedWords, selectedWord);
                     _appLogger.Log($"'{selectedWord}' added to excluded words list (double-click).");
                 }
                 else
@@ -838,10 +863,10 @@ public partial class MainWindow : Window
             }
             else
             {
-                if (!UserIncludedWords.Contains(selectedWord))
+                if (!ContainsWord(UserIncludedWords, selectedWord))
                 {
-                    UserIncludedWords.Add(selectedWord);
-                    UserExcludedWords.Remove(selectedWord);
+                    AddWordToCollection(UserIncludedWords, selectedWord);
+                    RemoveWordFromCollection(UserExcludedWords, selectedWord);
                     _appLogger.Log($"'{selectedWord}' added to included words list (double-click).");
                 }
                 else
@@ -860,10 +885,10 @@ public partial class MainWindow : Window
         }
 
         string word = displayableWord.Word;
-        if (!UserIncludedWords.Contains(word))
+        if (!ContainsWord(UserIncludedWords, word))
         {
-            UserIncludedWords.Add(word);
-            UserExcludedWords.Remove(word);
+            AddWordToCollection(UserIncludedWords, word);
+            RemoveWordFromCollection(UserExcludedWords, word);
             _appLogger.Log($"'{word}' added to included words list.");
         }
         else
@@ -880,10 +905,10 @@ public partial class MainWindow : Window
         }
 
         string word = displayableWord.Word;
-        if (!UserExcludedWords.Contains(word))
+        if (!ContainsWord(UserExcludedWords, word))
         {
-            UserExcludedWords.Add(word);
-            UserIncludedWords.Remove(word);
+            AddWordToCollection(UserExcludedWords, word);
+            RemoveWordFromCollection(UserIncludedWords, word);
             _appLogger.Log($"'{word}' added to excluded words list.");
         }
         else
@@ -907,11 +932,11 @@ public partial class MainWindow : Window
 
     private void ExcludedWordsListBox_MouseDoubleClick(object sender, MouseButtonEventArgs e)
     {
-        if (ExcludedWordsListBox.SelectedItem is string selectedWordToRemove)
+        if (ExcludedWordsListBox.SelectedItem is IncludedWord selectedWord)
         {
-            if (UserExcludedWords.Remove(selectedWordToRemove))
+            if (UserExcludedWords.Remove(selectedWord))
             {
-                _appLogger.Log($"'{selectedWordToRemove}' removed from excluded words list.");
+                _appLogger.Log($"'{selectedWord.Word}' removed from excluded words list.");
             }
         }
     }
@@ -932,11 +957,30 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (!UserIncludedWords.Contains(wordToAdd))
+        if (!ContainsWord(UserIncludedWords, wordToAdd))
         {
-            UserIncludedWords.Add(wordToAdd);
-            UserExcludedWords.Remove(wordToAdd);
-            _appLogger.Log($"'{wordToAdd}' added to included words list.");
+            bool pathExistsOnBoard = false;
+            try
+            {
+                char[,] currentBoard = GetCurrentBoard();
+                if (_solverEngine.IsInitialized)
+                {
+                    pathExistsOnBoard = _solverEngine.DoesWordHavePathOnBoard(currentBoard, wordToAdd);
+                }
+                else
+                {
+                    _appLogger.Log("Dictionary (Trie) not initialized. Cannot check path immediately.");
+                }
+            }
+            catch (Exception ex)
+            {
+                _appLogger.LogError($"Error checking path for '{wordToAdd}': {ex.Message}");
+            }
+
+            var newIncludedWord = new IncludedWord(wordToAdd, pathExistsOnBoard);
+            UserIncludedWords.Add(newIncludedWord);
+            RemoveWordFromCollection(UserExcludedWords, wordToAdd); // Ensure it's not in the other list
+            _appLogger.Log($"'{wordToAdd}' added to included words. Path on board: {pathExistsOnBoard}.");
             NewIncludedWordTextBox.Clear();
         }
         else
@@ -962,10 +1006,10 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (!UserExcludedWords.Contains(wordToAdd))
+        if (!ContainsWord(UserExcludedWords, wordToAdd))
         {
-            UserExcludedWords.Add(wordToAdd);
-            UserIncludedWords.Remove(wordToAdd);
+            AddWordToCollection(UserExcludedWords, wordToAdd, false); // No need to check paths for excluded words
+            RemoveWordFromCollection(UserIncludedWords, wordToAdd);
             _appLogger.Log($"'{wordToAdd}' added to excluded words list.");
             NewExcludedWordTextBox.Clear();
         }
@@ -978,11 +1022,11 @@ public partial class MainWindow : Window
 
     private void IncludedWordsListBox_MouseDoubleClick(object sender, MouseButtonEventArgs e)
     {
-        if (IncludedWordsListBox.SelectedItem is string selectedWordToRemove)
+        if (IncludedWordsListBox.SelectedItem is IncludedWord selectedWord)
         {
-            if (UserIncludedWords.Remove(selectedWordToRemove))
+            if (UserIncludedWords.Remove(selectedWord))
             {
-                _appLogger.Log($"'{selectedWordToRemove}' removed from included words list.");
+                _appLogger.Log($"'{selectedWord.Word}' removed from included words list.");
             }
         }
     }
@@ -1103,9 +1147,30 @@ public partial class MainWindow : Window
                 continue;
             }
 
-            dsw.IsUserIncluded = UserIncludedWords.Contains(dsw.Word);
-            dsw.IsUserExcluded = UserExcludedWords.Contains(dsw.Word);
+            dsw.IsUserIncluded = ContainsWord(UserIncludedWords, dsw.Word);
+            dsw.IsUserExcluded = ContainsWord(UserExcludedWords, dsw.Word);
         }
+    }
+
+    private char[,] GetCurrentBoard()
+    {
+        char[,] board = new char[8, 6];
+        for (int r = 0; r < 8; r++)
+        {
+            for (int c = 0; c < 6; c++)
+            {
+                var tb = _boardTextBoxes[r, c];
+                if (tb != null && !string.IsNullOrWhiteSpace(tb.Text) && char.IsLetter(tb.Text[0]))
+                {
+                    board[r, c] = char.ToLowerInvariant(tb.Text[0]);
+                }
+                else
+                {
+                    board[r, c] = ' '; // Space ensures value won't be found in the Trie
+                }
+            }
+        }
+        return board;
     }
 }
 

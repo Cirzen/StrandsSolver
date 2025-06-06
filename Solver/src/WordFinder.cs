@@ -23,6 +23,7 @@ public class WordFinder
     /// Performs a depth-first search on the board to find all valid word paths.
     /// </summary>
     /// <param name="board"></param>
+    /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns></returns>
     public List<WordPath> DepthFirstSearch(char[,] board)
     {
@@ -83,13 +84,12 @@ public class WordFinder
     /// </summary>
     /// <param name="board">The game board.</param>
     /// <param name="wordToFind">The specific word to find paths for (should be lowercase).</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A list of WordPath objects for the found word.</returns>
     public List<WordPath> DepthFirstSearchForWord(char[,] board, string wordToFind)
     {
         var foundPaths = new List<WordPath>();
-        // wordToFind is expected to be valid (e.g., correct length, already in Trie by SolverEngine logic)
-        // If wordToFind is empty, too short, or not in the Trie, this will correctly return an empty list.
-        if (string.IsNullOrEmpty(wordToFind) || wordToFind.Length < 4) // Basic validation
+        if (string.IsNullOrEmpty(wordToFind) || wordToFind.Length < 4) 
         {
             return foundPaths;
         }
@@ -113,7 +113,8 @@ public class WordFinder
         string currentPathString,
         List<(int, int)> currentPathCoords,
         List<WordPath> results,
-        string wordToFind)
+        string wordToFind
+        )
     {
         if (r < 0 || c < 0 || r >= _rows || c >= _cols || visited[r, c])
         {

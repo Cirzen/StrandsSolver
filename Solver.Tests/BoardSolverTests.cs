@@ -10,7 +10,7 @@ public class BoardSolverTests
     private readonly MockLogger _mockLogger;
 
     private readonly ProgressTracker _dummyProgressTracker = new(
-        (words, wordsAttempted, heatMap) => Task.CompletedTask
+        (words, wordsAttempted) => Task.CompletedTask
     );
 
     public BoardSolverTests()

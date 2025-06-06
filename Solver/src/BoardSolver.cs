@@ -92,7 +92,6 @@ internal class BoardSolver
             .OrderBy(r => r.Count)
             .ToList();
 
-        progressTracker.CurrentHeatMap.Clear();
 
         if (regions.Count > 0)
         {
@@ -104,17 +103,22 @@ internal class BoardSolver
                     IsValidWordPlacement(w, currentUsedPositions, currentUsedEdges)) // Use IsValidWordPlacement
                 .ToList();
 
-            if (candidateRegionWords.Count == 0) return new();
+            if (candidateRegionWords.Count == 0)
+            {
+                return new();
+            }
+
             if (!smallestRegion.All(p => candidateRegionWords.SelectMany(wp => wp.Positions)
                     .Distinct()
                     .Contains(p)))
+            {
                 return new();
+            }
 
             var positionFrequencyInRegionCandidates = candidateRegionWords
                 .SelectMany(w => w.Positions)
                 .GroupBy(p => p)
                 .ToDictionary(g => g.Key, g => g.Count());
-            progressTracker.CurrentHeatMap = new(positionFrequencyInRegionCandidates);
 
             return candidateRegionWords
                 .Select(w => new
@@ -126,14 +130,26 @@ internal class BoardSolver
                 .Select(x => x.WordPath)
                 .ToList();
         }
-        if (currentUsedPositions.Count != TotalCells) _logger?.Log("No unused regions found, but board not full.");
+        if (currentUsedPositions.Count != TotalCells)
+        {
+            _logger?.Log("No unused regions found, but board not full.");
+        }
+
         return new();
     }
 
     internal bool IsValidWordPlacement(WordPath wordToPlace, HashSet<(int, int)> existingUsedPositions, HashSet<((int, int), (int, int))> existingUsedEdges)
     {
-        if (wordToPlace.Positions.Any(p => existingUsedPositions.Contains(p))) return false;
-        if (wordToPlace.Edges.Any(newEdge => existingUsedEdges.Any(existingEdge => EdgeUtils.EdgesCross(newEdge, existingEdge) || EdgeUtils.EdgesOverlap(newEdge, existingEdge)))) return false;
+        if (wordToPlace.Positions.Any(p => existingUsedPositions.Contains(p)))
+        {
+            return false;
+        }
+
+        if (wordToPlace.Edges.Any(newEdge => existingUsedEdges.Any(existingEdge => EdgeUtils.EdgesCross(newEdge, existingEdge) || EdgeUtils.EdgesOverlap(newEdge, existingEdge))))
+        {
+            return false;
+        }
+
         return !EdgeUtils.PathSelfIntersects(wordToPlace);
     }
 
@@ -155,10 +171,16 @@ internal class BoardSolver
                     {
                         var (currR, currC) = q.Dequeue();
                         region.Add((currR, currC));
-                        for (int ro = -1; ro <= 1; ro++) for (int co = -1; co <= 1; co++)
+                        for (int ro = -1; ro <= 1; ro++)
                         {
-                            if (ro == 0 && co == 0) continue;
-                            int nr = currR + ro, nc = currC + co;
+                            for (int co = -1; co <= 1; co++)
+                        {
+                            if (ro == 0 && co == 0)
+                                {
+                                    continue;
+                                }
+
+                                int nr = currR + ro, nc = currC + co;
                             if (nr >= 0 && nr < totalRows && nc >= 0 && nc < totalColumns &&
                                 !usedPositions.Contains((nr, nc)) && !visited[nr, nc])
                             {
@@ -166,8 +188,12 @@ internal class BoardSolver
                                 visited[nr, nc] = true;
                             }
                         }
+                        }
                     }
-                    if (region.Any()) regions.Add(region);
+                    if (region.Any())
+                    {
+                        regions.Add(region);
+                    }
                 }
             }
         }
@@ -180,7 +206,10 @@ internal class BoardSolver
         foreach (var (row, col) in usedPositions.OrderBy(p => p.Item1).ThenBy(p => p.Item2))
         {
             int idx = row * 6 + col; // Assuming 6 columns
-            if (idx < 64) key |= 1UL << idx;
+            if (idx < 64)
+            {
+                key |= 1UL << idx;
+            }
         }
         if (ambiguousKnownWordStrings.Any())
         {
@@ -191,17 +220,24 @@ internal class BoardSolver
 
     private async Task HandleProgressReportingAsync(ProgressTracker progressTracker, List<WordPath> currentSolutionSoFar, CancellationToken cancellationToken)
     {
-        if (cancellationToken.IsCancellationRequested) return;
+        // Log the state of the cancellation token
+        //_logger?.Log($"HandleProgressReportingAsync: Cancellation requested: {cancellationToken.IsCancellationRequested}");
+        if (cancellationToken.IsCancellationRequested)
+        {
+            return;
+        }
 
         int updateIntervalMilliseconds = App.ConfigService.Settings.ProgressUpdateIntervalMilliseconds;
-        if ((DateTime.Now - progressTracker.LastProgressUpdate).TotalMilliseconds >= updateIntervalMilliseconds)
+        if (progressTracker.GetElapsedTimeThisSolve().TotalMilliseconds >= updateIntervalMilliseconds)
         {
             long wordsInInterval = progressTracker.GetAndResetWordsAttemptedSinceLastReport();
             double wpsInterval = (updateIntervalMilliseconds > 0) ? (wordsInInterval / (updateIntervalMilliseconds / 1000.0)) : 0;
-            if (double.IsNaN(wpsInterval) || double.IsInfinity(wpsInterval)) wpsInterval = 0;
+            if (double.IsNaN(wpsInterval) || double.IsInfinity(wpsInterval))
+            {
+                wpsInterval = 0;
+            }
 
-            await progressTracker.ReportProgress(new List<WordPath>(currentSolutionSoFar), (long)wpsInterval, progressTracker.CurrentHeatMap);
-            progressTracker.LastProgressUpdate = DateTime.Now;
+            await progressTracker.ReportProgress(new List<WordPath>(currentSolutionSoFar), (long)wpsInterval);
         }
     }
 
@@ -211,7 +247,10 @@ internal class BoardSolver
         CancellationToken cancellationToken, ProgressTracker progressTracker,
         List<string> ambiguousKnownWordStrings, List<WordPath> allPathsForAmbiguousKnownWords)
     {
-        if (cancellationToken.IsCancellationRequested) return new() { IsSolved = false };
+        if (cancellationToken.IsCancellationRequested)
+        {
+            return new() { IsSolved = false };
+        }
 
         string wordToPlaceNowStr = ambiguousKnownWordStrings.First();
         var remainingAmbiguousStrings = ambiguousKnownWordStrings.Skip(1).ToList();
@@ -228,8 +267,15 @@ internal class BoardSolver
         foreach (var pathOption in pathsToTryForThisWord)
         {
             progressTracker.IncrementWordsAttempted();
-            if (cancellationToken.IsCancellationRequested) return new() { IsSolved = false };
-            if (!IsValidWordPlacement(pathOption, currentUsedPositions, currentUsedEdges)) continue;
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return new() { IsSolved = false };
+            }
+
+            if (!IsValidWordPlacement(pathOption, currentUsedPositions, currentUsedEdges))
+            {
+                continue;
+            }
 
             currentSolutionSoFar.Add(pathOption);
             foreach (var pos in pathOption.Positions)
@@ -245,7 +291,10 @@ internal class BoardSolver
             var result = await SolveAsync(allCandidatePathsOnBoard, currentUsedPositions, currentUsedEdges,
                                           currentSolutionSoFar, cancellationToken, progressTracker,
                                           remainingAmbiguousStrings, allPathsForAmbiguousKnownWords);
-            if (result.IsSolved) return result;
+            if (result.IsSolved)
+            {
+                return result;
+            }
 
             foreach (var edge in pathOption.Edges)
             {
@@ -268,8 +317,11 @@ internal class BoardSolver
         CancellationToken cancellationToken, ProgressTracker progressTracker,
         List<WordPath> allPathsForAmbiguousKnownWords) // allPathsForAmbiguousKnownWords might not be needed here if only passed for ambiguous
     {
-        if (cancellationToken.IsCancellationRequested) return new() { IsSolved = false };
-        
+        if (cancellationToken.IsCancellationRequested)
+        {
+            return new() { IsSolved = false };
+        }
+
         // This check is technically redundant if the main SolveAsync's base case is hit,
         // but good for clarity within this specific path.
         if (currentUsedPositions.Count == TotalCells) 
@@ -293,7 +345,10 @@ internal class BoardSolver
         foreach (var wordToTry in rankedGeneralCandidates)
         {
             progressTracker.IncrementWordsAttempted();
-            if (cancellationToken.IsCancellationRequested) return new() { IsSolved = false };
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return new() { IsSolved = false };
+            }
 
             currentSolutionSoFar.Add(wordToTry);
             foreach (var pos in wordToTry.Positions)
@@ -310,7 +365,10 @@ internal class BoardSolver
                                           currentSolutionSoFar, cancellationToken, progressTracker,
                                           new List<string>(), // No ambiguous words left to process down this path
                                           allPathsForAmbiguousKnownWords); 
-            if (result.IsSolved) return result;
+            if (result.IsSolved)
+            {
+                return result;
+            }
 
             foreach (var edge in wordToTry.Edges)
             {

@@ -1,28 +1,37 @@
+using System.Diagnostics;
+
 namespace Solver;
 
 internal class ProgressTracker
 {
-    public DateTime LastProgressUpdate { get; set; } = DateTime.Now;
-    public Func<List<WordPath>, long, Dictionary<(int, int), int>, Task> ReportProgress { get; }
+    public delegate Task ReportProgressDelegate(List<WordPath> solutionForDisplay, long wps);
+
+    private readonly ReportProgressDelegate _reportProgress;
+    private readonly Stopwatch _stopwatch = new();
+    private long _attemptedWordsThisSolve;
 
     private long _wordsAttemptedSinceLastReport = 0;
-    private DateTime _startTimeOfCurrentSolveAttempt;
-    private long _totalWordsAttemptedThisSolve = 0;
 
-    // Property to store the latest heatmap
-    // Key: (row, col), Value: frequency or a normalized heat value
-    public Dictionary<(int, int), int> CurrentHeatMap { get; set; } = new();
-
-    public ProgressTracker(Func<List<WordPath>, long, Dictionary<(int, int), int>, Task> reportProgress) // Updated signature
+    public ProgressTracker(ReportProgressDelegate reportProgress)
     {
-        ReportProgress = reportProgress ?? throw new ArgumentNullException(nameof(reportProgress));
-        _startTimeOfCurrentSolveAttempt = DateTime.Now;
+        _reportProgress = reportProgress;
+    }
+
+    /// <summary>
+    /// Reports the current solution progress to the UI.
+    /// </summary>
+    /// <param name="solution">The current solution.</param>
+    /// <param name="wps">Words per second metric.</param>
+    public async Task ReportProgress(List<WordPath> solution, long wps)
+    {
+        await _reportProgress(solution, wps);
+        _stopwatch.Restart();
     }
 
     public void IncrementWordsAttempted()
     {
         Interlocked.Increment(ref _wordsAttemptedSinceLastReport);
-        Interlocked.Increment(ref _totalWordsAttemptedThisSolve);
+        Interlocked.Increment(ref _attemptedWordsThisSolve);
     }
 
     public long GetAndResetWordsAttemptedSinceLastReport()
@@ -32,20 +41,23 @@ internal class ProgressTracker
 
     public long GetTotalWordsAttemptedThisSolve()
     {
-        return Interlocked.Read(ref _totalWordsAttemptedThisSolve);
+        return Interlocked.Read(ref _attemptedWordsThisSolve);
     }
 
+    /// <summary>
+    /// Gets the total elapsed time for the current solve attempt.
+    /// </summary>
     public TimeSpan GetElapsedTimeThisSolve()
     {
-        return DateTime.Now - _startTimeOfCurrentSolveAttempt;
+        return _stopwatch.Elapsed;
     }
 
+    /// <summary>
+    /// Resets the internal state for a new solve attempt.
+    /// </summary>
     public void ResetForNewSolveAttempt()
     {
-        _startTimeOfCurrentSolveAttempt = DateTime.Now;
-        _totalWordsAttemptedThisSolve = 0;
-        _wordsAttemptedSinceLastReport = 0;
-        LastProgressUpdate = DateTime.Now;
-        CurrentHeatMap.Clear(); // Clear heatmap for new solve
+        _stopwatch.Restart();
+        _attemptedWordsThisSolve = 0;
     }
 }
