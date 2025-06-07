@@ -7,3 +7,5 @@ riderModule.iml
 /.idea/
 *.cache
 *.pfx
+/WindowsApplicationPackaging/WindowsApplicationPackaging.assets.cache
+/WindowsApplicationPackaging/WindowsApplicationPackaging.wapproj.user
