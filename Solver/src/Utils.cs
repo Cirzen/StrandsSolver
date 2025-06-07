@@ -1,20 +1,22 @@
+using System.Text;
+
 namespace Solver;
 
 public class Utils
 {
-    public static char[,] CreateBoardFromString(string rawBoard)
+    public static char[,] CreateBoardFromString(string rawBoard, int rowCount = 8, int columnCount = 6)
     {
-        if (rawBoard.Length != 48)
+        if (rawBoard.Length != rowCount * columnCount)
         {
-            throw new ArgumentException("Board string must be exactly 48 characters long (8x6).");
+            throw new ArgumentException("Board string length does not match expected dimensions.");
         }
 
-        var board = new char[8, 6];
+        var board = new char[rowCount, columnCount];
         int index = 0;
 
-        for (int row = 0; row < 8; row++)
+        for (int row = 0; row < rowCount; row++)
         {
-            for (int col = 0; col < 6; col++)
+            for (int col = 0; col < columnCount; col++)
             {
                 board[row, col] = char.ToLower(rawBoard[index++]);
             }
@@ -77,5 +79,24 @@ public class Utils
         }
         logger?.Log($"SelectKnownPaths: Returning {pathsMatchingKnownWords.Count} total paths corresponding to known words.");
         return pathsMatchingKnownWords;
+    }
+
+    /// <summary>
+    /// Converts a board represented as a 2D char array into a single string.
+    /// </summary>
+    /// <param name="board">The board to convert</param>
+    /// <returns>A string representation of the board</returns>
+    internal static string ConvertBoardToString(char[,] board)
+    {
+        var dimensions = (board.GetLength(0), board.GetLength(1));
+        var builder = new StringBuilder(dimensions.Item1 * dimensions.Item2);
+        for (int row = 0; row < dimensions.Item1; row++)
+        {
+            for (int col = 0; col < dimensions.Item2; col++)
+            {
+                builder.Append(board[row, col]);
+            }
+        }
+        return builder.ToString();
     }
 }
