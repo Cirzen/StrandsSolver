@@ -58,6 +58,7 @@ internal class ProgressTracker
     public void ResetForNewSolveAttempt()
     {
         _stopwatch.Restart();
-        _attemptedWordsThisSolve = 0;
+        Interlocked.Exchange(ref _attemptedWordsThisSolve, 0);
+        Interlocked.Exchange(ref _wordsAttemptedSinceLastReport,  0);
     }
 }

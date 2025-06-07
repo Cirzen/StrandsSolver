@@ -16,7 +16,7 @@
                              TrueValue="{DynamicResource TextForegroundColor}" 
                              FalseValue="#FF660000"/>
 
-        <Style x:Key="IncludedWordItemStyle" TargetType="ListBoxItem">
+        <Style x:Key="WordItemStyle" TargetType="ListBoxItem">
             <Setter Property="Padding" Value="5,3"/>
             <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
             <Setter Property="Template">
@@ -219,7 +219,7 @@
                          Background="{DynamicResource ControlBackgroundColor}"
                          Foreground="{DynamicResource TextForegroundColor}"
                          BorderBrush="{DynamicResource BorderColorBrush}"
-                         ItemContainerStyle="{StaticResource IncludedWordItemStyle}"/>
+                         ItemContainerStyle="{StaticResource WordItemStyle}"/>
                 <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,5,0,0">
                     <TextBox x:Name="NewIncludedWordTextBox" Width="120" Margin="0,0,5,0" 
                              Background="{DynamicResource TextBoxBackgroundColor}" 
@@ -238,7 +238,7 @@
                          Background="{DynamicResource ControlBackgroundColor}"
                          Foreground="{DynamicResource TextForegroundColor}"
                          BorderBrush="{DynamicResource BorderColorBrush}"
-                         ItemContainerStyle="{StaticResource IncludedWordItemStyle}"/>
+                         ItemContainerStyle="{StaticResource WordItemStyle}"/>
                 <StackPanel Grid.Row="6" Orientation="Horizontal" Margin="0,5,0,0">
                     <TextBox x:Name="NewExcludedWordTextBox" Width="120" Margin="0,0,5,0" 
                              Background="{DynamicResource TextBoxBackgroundColor}" 
