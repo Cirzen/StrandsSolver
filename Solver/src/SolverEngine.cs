@@ -1,18 +1,19 @@
 using System.IO;
+using System.Linq;
 
 namespace Solver;
 
 internal class SolverEngine
 {
     private static readonly Trie Trie = new();
-    private static CancellationTokenSource? _ctSource;
     private readonly ILogger _logger;
 
     private string? _cachedBoardStringForPrePruning; 
     private List<WordPath>? _cachedPrePrunedWordPaths; 
 
     private string? _cachedBoardStringForProblematicFilter; 
-    private List<WordPath>? _cachedPathsAfterProblematicFilter; 
+    private List<WordPath>? _cachedPathsAfterProblematicFilter;
+    public bool IsInitialized => !Trie.IsEmpty;
 
     private record BoardSolverInputParameters(
         List<WordPath> FinalGeneralCandidatePool,
@@ -41,14 +42,14 @@ internal class SolverEngine
     /// <param name="wordsToExcludeInput">A collection of words to exclude from the solution. Can be <see langword="null"/>.</param>
     /// <returns>A <see cref="BoardSolution"/> object containing the final solution, including resolved word paths
     /// and any associated metadata.</returns>
-    public async Task<BoardSolution> ExecuteAsync(char[,] board, IEnumerable<string> knownWordsInput, ProgressTracker progressTracker, IEnumerable<string> wordsToExcludeInput)
+    public async Task<BoardSolution> ExecuteAsync(char[,] board, IEnumerable<string> knownWordsInput, ProgressTracker progressTracker, IEnumerable<string> wordsToExcludeInput, CancellationToken cancellationToken)
     {
         EnsureTrieInitialized();
 
         var knownWords = knownWordsInput ?? Enumerable.Empty<string>();
         var wordsToExclude = wordsToExcludeInput ?? Enumerable.Empty<string>();
 
-        PrepareInitialState(knownWords);
+        PrepareInitialState(knownWords, board); 
 
         string currentBoardString = Utils.ConvertBoardToString(board);
 
@@ -64,13 +65,13 @@ internal class SolverEngine
             solverInputs.UsedPositions,
             solverInputs.UsedEdges,
             solverInputs.CurrentSolutionWithUnambiguousKnowns,
-            _ctSource.Token,
+            cancellationToken,
             progressTracker,
             solverInputs.AmbiguousKnownWordStrings,
             solverInputs.AllPathsForAmbiguousResolution
         );
 
-        await ProcessSolutionAsync(solution, progressTracker);
+        await ProcessSolutionAsync(solution, progressTracker, cancellationToken);
         return solution;
     }
 
@@ -115,6 +116,22 @@ internal class SolverEngine
         _logger?.Log("All board-specific caches cleared (raw paths and problematic filter).");
     }
 
+    public bool DoesWordHavePathOnBoard(char[,] board, string word)
+    {
+        EnsureTrieInitialized();
+                                
+        if (string.IsNullOrWhiteSpace(word) || Trie.IsEmpty)
+        {
+            _logger?.Log($"DoesWordHavePathOnBoard: Invalid word ('{word}') or Trie empty. Returning false.");
+            return false;
+        }
+
+        var finder = new WordFinder(Trie, board.GetLength(0), board.GetLength(1));
+        var paths = finder.DepthFirstSearchForWord(board, word.ToLowerInvariant());
+        _logger?.Log($"DoesWordHavePathOnBoard: Found {paths.Count} paths for '{word}'.");
+        return paths.Any();
+    }
+
     private void EnsureTrieInitialized()
     {
         if (!Trie.IsEmpty)
@@ -134,13 +151,53 @@ internal class SolverEngine
         }
     }
 
-    private void PrepareInitialState(IEnumerable<string> knownWords)
+    private void PrepareInitialState(IEnumerable<string> knownWords, char[,] board)
     {
-        _ctSource = new();
-        foreach (var word in knownWords.Where(word => !string.IsNullOrWhiteSpace(word) && !Trie.Search(word)))
+        var newlyAddedWords = new List<string>();
+
+        foreach (var word in knownWords.Where(w => !string.IsNullOrWhiteSpace(w)))
         {
-            Trie.Insert(word);
-            _logger?.Log($"Temporarily added known word '{word}' to Trie for this solve attempt.");
+            string lowerWord = word.ToLowerInvariant(); 
+            if (!Trie.Search(lowerWord))
+            {
+                Trie.Insert(lowerWord);
+                _logger?.Log($"Temporarily added known word '{lowerWord}' to Trie for this solve attempt.");
+                newlyAddedWords.Add(lowerWord);
+            }
+        }
+
+        if (newlyAddedWords.Any())
+        {
+            _logger?.Log($"Trie was modified with {newlyAddedWords.Count} new known word(s): {string.Join(", ", newlyAddedWords)}.");
+
+            if (_cachedPrePrunedWordPaths != null && Utils.ConvertBoardToString(board) == _cachedBoardStringForPrePruning)
+            {
+                _logger?.Log("Attempting to augment existing raw path cache with newly added words.");
+                var finder = new WordFinder(Trie, board.GetLength(0), board.GetLength(1));
+                
+                foreach (string newWord in newlyAddedWords)
+                {
+                    var pathsForNewWord = finder.DepthFirstSearchForWord(board, newWord);
+
+                    if (pathsForNewWord != null && pathsForNewWord.Any())
+                    {
+                        _cachedPrePrunedWordPaths.AddRange(pathsForNewWord);
+                        _logger?.Log($"Added {pathsForNewWord.Count} path(s) for new word '{newWord}' to raw path cache. Total raw paths: {_cachedPrePrunedWordPaths.Count}.");
+                    }
+                    else
+                    {
+                        _logger?.Log($"No paths found on board for new word '{newWord}'.");
+                    }
+                }
+                _cachedBoardStringForProblematicFilter = null;
+                _cachedPathsAfterProblematicFilter = null;
+                _logger?.Log("Invalidated problematic starter words cache due to augmentation of raw paths.");
+            }
+            else
+            {
+                ClearPrePruningCache();
+                _logger?.Log("Cleared all pre-pruning caches as no valid raw path cache existed, board changed, or augmentation is not implemented this way.");
+            }
         }
     }
 
@@ -160,7 +217,6 @@ internal class SolverEngine
         _cachedBoardStringForPrePruning = currentBoardString;
         _logger?.Log($"Board scan complete. Found {rawPaths.Count} raw paths. Cached.");
 
-        // Invalidate problematic filter cache as raw paths changed
         _cachedBoardStringForProblematicFilter = null;
         _cachedPathsAfterProblematicFilter = null;
         _logger?.Log("Invalidated problematic starter words cache due to new raw path calculation.");
@@ -199,7 +255,7 @@ internal class SolverEngine
         if (!wordsToExclude.Any())
         {
             _logger?.Log("No user exclusions to apply.");
-            return new List<WordPath>(pathsToFilter); // Return a copy
+            return new List<WordPath>(pathsToFilter);
         }
 
         var exclusionSet = new HashSet<string>(wordsToExclude.Select(w => w.ToLowerInvariant()));
@@ -272,8 +328,16 @@ internal class SolverEngine
         );
     }
 
-    private async Task ProcessSolutionAsync(BoardSolution solution, ProgressTracker progressTracker)
+    private async Task ProcessSolutionAsync(BoardSolution solution, ProgressTracker progressTracker, CancellationToken cancellationToken)
     {
+        // Check if the operation was cancelled (aborted) before processing the solution
+        if (cancellationToken.IsCancellationRequested)
+        {
+            _logger?.Log("Solution processing skipped as operation was cancelled.");
+            // Do not report progress if aborted, MainWindow.AbortSolver handles the status bar.
+            return;
+        }
+
         if (solution.IsSolved)
         {
             _logger?.Log("Solution found!");
@@ -284,25 +348,25 @@ internal class SolverEngine
 
             if (solution.Words != null)
             {
-                await progressTracker.ReportProgress(new List<WordPath>(solution.Words), (long)overallWps, progressTracker.CurrentHeatMap);
+                await progressTracker.ReportProgress(new List<WordPath>(solution.Words), (long)overallWps);
             }
             else
             {
-                await progressTracker.ReportProgress(new List<WordPath>(), (long)overallWps, progressTracker.CurrentHeatMap);
+                // This case should ideally not happen if IsSolved is true.
+                await progressTracker.ReportProgress(new List<WordPath>(), (long)overallWps);
                 _logger?.LogError("Solution reported as solved, but solution.Words was null.");
             }
         }
         else
         {
             _logger?.LogError("No solution found.");
-            // Report empty progress if no solution to clear UI
-            await progressTracker.ReportProgress(new List<WordPath>(), 0, new Dictionary<(int, int), int>());
+            // Report empty progress but ensure the "No solution found" message isn't immediately overwritten by WPS.
+            await progressTracker.ReportProgress(new List<WordPath>(), 0);
         }
     }
 
     public void Abort()
     {
-        _logger?.Log("Solver aborted.");
-        _ctSource?.Cancel();
+        _logger?.Log("Solver aborted by user.");
     }
 }

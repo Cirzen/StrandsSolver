@@ -5,6 +5,7 @@ riderModule.iml
 /_ReSharper.Caches/
 /.vs
 /.idea/
+*.cache
 *.pfx
 /WindowsApplicationPackaging/WindowsApplicationPackaging.assets.cache
 /WindowsApplicationPackaging/WindowsApplicationPackaging.wapproj.user
