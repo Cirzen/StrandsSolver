@@ -91,30 +91,7 @@ jobs:
         run: Remove-Item -path $env:Wap_Project_Directory\GitHubActionsWorkflow.pfx -Force
         if: ${{ steps.decode_pfx.outcome == 'success' }}
       
-      # Upload the MSIX package: https://github.com/marketplace/actions/upload-a-build-artifact
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: MSIX Package
-          path: ${{ env.Wap_Project_Directory }}\AppPackages
-      
-      # Find the Release ZIP package file to be uploaded to the release
-      - name: Find Release Package (ZIP)
-        id: find_zip_package
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: |
-          $zipPath = (Get-ChildItem -Path "${{ env.Wap_Project_Directory }}\AppPackages" -Recurse -Filter "*.zip" | Select-Object -First 1).FullName
-          If (-not $zipPath) {
-            Write-Error "Release ZIP package not found in ${{ env.Wap_Project_Directory }}\AppPackages"
-            exit 1
-          }
-          Write-Host "Found ZIP package: $zipPath"
-          echo "zip_path=$zipPath" >> $env:GITHUB_OUTPUT
-          $zipName = Split-Path -Path $zipPath -Leaf
-          echo "zip_name=$zipName" >> $env:GITHUB_OUTPUT
-        shell: pwsh
-      
-      # Set Date-Based Version for the Release
+      # Set Date-Based Version for the Release (Moved Up)
       - name: Set Date-Based Version
         id: version_generator
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -123,12 +100,45 @@ jobs:
           $version = (Get-Date -Format "yyyy.MM.dd") + ".${{ github.run_number }}"
           Write-Host "Generated Version: $version"
           echo "version_number=$version" >> $env:GITHUB_OUTPUT
+
+      # New Step: Create Release ZIP Package
+      - name: Create Release ZIP Package
+        id: create_zip_package
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        shell: pwsh
+        run: |
+          $appPackagesDir = "${{ env.Wap_Project_Directory }}\AppPackages"
+          # Find the directory containing the app bundle and install script (often ends with _Test)
+          $packageContentDir = Get-ChildItem -Path $appPackagesDir -Directory -Recurse | Where-Object {$_.Name -like "*_Test" -or (Test-Path (Join-Path $_.FullName "*.msixbundle"))} | Select-Object -First 1
+          
+          If (-not $packageContentDir) {
+            Write-Error "Release content directory (e.g., *_Test or containing .msixbundle) not found in $appPackagesDir"
+            Write-Host "Listing contents of $appPackagesDir for debugging:"
+            Get-ChildItem -Path $appPackagesDir -Recurse | ForEach-Object { Write-Host $_.FullName }
+            exit 1
+          }
+          Write-Host "Found package content directory: $($packageContentDir.FullName)"
+          
+          $zipName = "Solver_v${{ steps.version_generator.outputs.version_number }}.zip"
+          $zipPath = Join-Path -Path $appPackagesDir -ChildPath $zipName
+          
+          Compress-Archive -Path "$($packageContentDir.FullName)\*" -DestinationPath $zipPath -Force
+          Write-Host "Created release ZIP: $zipPath"
+          echo "zip_path=$zipPath" >> $env:GITHUB_OUTPUT
+          echo "zip_name=$zipName" >> $env:GITHUB_OUTPUT
+
+      # Upload the MSIX package: https://github.com/marketplace/actions/upload-a-build-artifact
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: MSIX Package and Release ZIP
+          path: ${{ env.Wap_Project_Directory }}\AppPackages
       
       # Create a GitHub Release
       - name: Create Release
         id: create_release
         uses: ncipollo/release-action@v1
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.find_zip_package.outputs.zip_path != '' && steps.version_generator.outputs.version_number != ''
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.version_generator.outputs.version_number != '' && steps.create_zip_package.outputs.zip_path != ''
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -145,11 +155,11 @@ jobs:
       # Upload the ZIP package as a release asset
       - name: Upload Release Asset (ZIP Package)
         uses: actions/upload-release-asset@v1
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.find_zip_package.outputs.zip_path != '' && steps.create_release.outputs.upload_url != ''
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.create_zip_package.outputs.zip_path != '' && steps.create_release.outputs.upload_url != ''
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ${{ steps.find_zip_package.outputs.zip_path }}
-          asset_name: ${{ steps.find_zip_package.outputs.zip_name }}
+          asset_path: ${{ steps.create_zip_package.outputs.zip_path }}
+          asset_name: ${{ steps.create_zip_package.outputs.zip_name }}
           asset_content_type: application/zip
