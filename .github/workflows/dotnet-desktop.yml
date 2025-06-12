@@ -9,21 +9,19 @@
 # refer to https://docs.microsoft.com/en-us/dotnet/desktop-wpf/migration/convert-project-from-net-framework
 #
 
-name: .NET Core Desktop
+name: Sideload
 
 on:
   push:
     branches:
       - "main"
-      - "fix/*" # Add this to trigger on pushes to fix/* branches
   pull_request:
     branches: [ "main", "fix/*" ]
 
 permissions:
   contents: write
   packages: write
-
-
+  
 jobs:
 
   build:
@@ -111,7 +109,7 @@ jobs:
       # New Step: Create Release ZIP Package
       - name: Create Release ZIP Package
         id: create_zip_package
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/fix/'))
         shell: pwsh
         run: |
           $appPackagesDir = "${{ env.Wap_Project_Directory }}\AppPackages"
