@@ -13,7 +13,9 @@ name: .NET Core Desktop
 
 on:
   push:
-    branches: [ "main" ]
+    branches:
+      - "main"
+      - "fix/*" # Add this to trigger on pushes to fix/* branches
   pull_request:
     branches: [ "main", "fix/*" ]
 
@@ -99,7 +101,7 @@ jobs:
       # Set Date-Based Version for the Release (Moved Up)
       - name: Set Date-Based Version
         id: version_generator
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/fix/'))
         shell: pwsh
         run: |
           $version = (Get-Date -Format "yyyy.MM.dd") + ".${{ github.run_number }}"
@@ -143,7 +145,7 @@ jobs:
       - name: Create Release
         id: create_release
         uses: ncipollo/release-action@v1
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.version_generator.outputs.version_number != '' && steps.create_zip_package.outputs.zip_path != ''
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/fix/')) && steps.version_generator.outputs.version_number != '' && steps.create_zip_package.outputs.zip_path != ''
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -153,8 +155,8 @@ jobs:
             Automated release v${{ steps.version_generator.outputs.version_number }}.
             Commit: ${{ github.sha }}
             Release package (ZIP) attached. This ZIP contains the application bundle and an install.ps1 script for installing the self-signed certificate and the application.
-          draft: false
-          prerelease: true
+          draft: ${{ startsWith(github.ref, 'refs/heads/fix/') }}
+          prerelease: ${{ startsWith(github.ref, 'refs/heads/fix/') }}
           allowUpdates: true
       
       # Upload the ZIP package as a release asset
