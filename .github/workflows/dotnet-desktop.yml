@@ -102,11 +102,15 @@ jobs:
         run: |
           Write-Host "github.event_name: ${{ github.event_name }}"
           Write-Host "github.ref: ${{ github.ref }}"
+          Write-Host "github.head_ref: ${{ github.head_ref }}"
       
       # Set Date-Based Version for the Release
       - name: Set Date-Based Version
         id: version_generator
-        if: (github.event_name == 'push' || github.event_name == 'pull_request') && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/fix/'))
+        if: |
+            (github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/fix/')))
+            ||
+            (github.event_name == 'pull_request' && (github.head_ref == 'main' || startsWith(github.head_ref, 'fix/')))
         shell: pwsh
         run: |
           $version = (Get-Date -Format "yyyy.MM.dd") + ".${{ github.run_number }}"
@@ -116,7 +120,7 @@ jobs:
       # New Step: Create Release ZIP Package
       - name: Create Release ZIP Package
         id: create_zip_package
-        if: (github.event_name == 'push' || github.event_name == 'pull_request') && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/fix/'))
+        if: steps.version_generator.outputs.version_number != ''
         shell: pwsh
         run: |
           $appPackagesDir = "${{ env.Wap_Project_Directory }}\AppPackages"
@@ -150,7 +154,7 @@ jobs:
       - name: Create Release
         id: create_release
         uses: ncipollo/release-action@v1
-        if: (github.event_name == 'push' || github.event_name == 'pull_request') && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/fix/')) && steps.version_generator.outputs.version_number != '' && steps.create_zip_package.outputs.zip_path != ''
+        if: steps.version_generator.outputs.version_number != '' && steps.create_zip_package.outputs.zip_path != ''
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
