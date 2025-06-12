@@ -15,7 +15,12 @@ on:
   push:
     branches: [ "main" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "main", "fix/*" ]
+
+permissions:
+  contents: write
+  packages: write
+
 
 jobs:
 
@@ -149,7 +154,7 @@ jobs:
             Commit: ${{ github.sha }}
             Release package (ZIP) attached. This ZIP contains the application bundle and an install.ps1 script for installing the self-signed certificate and the application.
           draft: false
-          prerelease: false
+          prerelease: true
           allowUpdates: true
       
       # Upload the ZIP package as a release asset
