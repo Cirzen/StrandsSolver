@@ -96,7 +96,14 @@ jobs:
         run: Remove-Item -path $env:Wap_Project_Directory\GitHubActionsWorkflow.pfx -Force
         if: ${{ steps.decode_pfx.outcome == 'success' }}
       
-      # Set Date-Based Version for the Release (Moved Up)
+      # Debug event name and ref
+      - name: Debug GitHub Context
+        shell: pwsh
+        run: |
+          Write-Host "github.event_name: ${{ github.event_name }}"
+          Write-Host "github.ref: ${{ github.ref }}"
+      
+      # Set Date-Based Version for the Release
       - name: Set Date-Based Version
         id: version_generator
         if: (github.event_name == 'push' || github.event_name == 'pull_request') && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/fix/'))
