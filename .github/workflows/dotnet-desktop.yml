@@ -9,14 +9,19 @@
 # refer to https://docs.microsoft.com/en-us/dotnet/desktop-wpf/migration/convert-project-from-net-framework
 #
 
-name: .NET Core Desktop
+name: Sideload
 
 on:
   push:
-    branches: [ "main" ]
+    branches:
+      - "main"
   pull_request:
-    branches: [ "main" ]
+    branches: [ "main", "fix/*" ]
 
+permissions:
+  contents: write
+  packages: write
+  
 jobs:
 
   build:
@@ -91,10 +96,21 @@ jobs:
         run: Remove-Item -path $env:Wap_Project_Directory\GitHubActionsWorkflow.pfx -Force
         if: ${{ steps.decode_pfx.outcome == 'success' }}
       
-      # Set Date-Based Version for the Release (Moved Up)
+      # Debug event name and ref
+      - name: Debug GitHub Context
+        shell: pwsh
+        run: |
+          Write-Host "github.event_name: ${{ github.event_name }}"
+          Write-Host "github.ref: ${{ github.ref }}"
+          Write-Host "github.head_ref: ${{ github.head_ref }}"
+      
+      # Set Date-Based Version for the Release
       - name: Set Date-Based Version
         id: version_generator
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: |
+            (github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/fix/')))
+            ||
+            (github.event_name == 'pull_request' && (github.head_ref == 'main' || startsWith(github.head_ref, 'fix/')))
         shell: pwsh
         run: |
           $version = (Get-Date -Format "yyyy.MM.dd") + ".${{ github.run_number }}"
@@ -104,7 +120,7 @@ jobs:
       # New Step: Create Release ZIP Package
       - name: Create Release ZIP Package
         id: create_zip_package
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: steps.version_generator.outputs.version_number != ''
         shell: pwsh
         run: |
           $appPackagesDir = "${{ env.Wap_Project_Directory }}\AppPackages"
@@ -138,7 +154,7 @@ jobs:
       - name: Create Release
         id: create_release
         uses: ncipollo/release-action@v1
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.version_generator.outputs.version_number != '' && steps.create_zip_package.outputs.zip_path != ''
+        if: steps.version_generator.outputs.version_number != '' && steps.create_zip_package.outputs.zip_path != ''
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -148,14 +164,14 @@ jobs:
             Automated release v${{ steps.version_generator.outputs.version_number }}.
             Commit: ${{ github.sha }}
             Release package (ZIP) attached. This ZIP contains the application bundle and an install.ps1 script for installing the self-signed certificate and the application.
-          draft: false
-          prerelease: false
+          draft: ${{ startsWith(github.ref, 'refs/heads/fix/') }}
+          prerelease: ${{ startsWith(github.ref, 'refs/heads/fix/') }}
           allowUpdates: true
       
       # Upload the ZIP package as a release asset
       - name: Upload Release Asset (ZIP Package)
         uses: actions/upload-release-asset@v1
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.create_zip_package.outputs.zip_path != '' && steps.create_release.outputs.upload_url != ''
+        if: steps.create_zip_package.outputs.zip_path != '' && steps.create_release.outputs.upload_url != ''
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
